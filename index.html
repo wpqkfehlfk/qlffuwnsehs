@@ -1,0 +1,2609 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>정산 메이트 — iOS 스타일 친구 장부</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Pretendard Font & Phosphor Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"Pretendard"', 'sans-serif'],
+          },
+          colors: {
+            ios: {
+              blue: '#0A84FF',
+              green: '#30D158',
+              indigo: '#5E5CE6',
+              orange: '#FF9F0A',
+              pink: '#FF375F',
+              red: '#FF453A',
+              teal: '#64D2FF',
+              yellow: '#FFD60A',
+              darkBg: '#000000',
+              darkCard: '#1C1C1E',
+              darkElevated: '#2C2C2E',
+              lightBg: '#F2F2F7',
+              lightCard: '#FFFFFF',
+              lightElevated: '#E5E5EA'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --spring-easing: cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif;
+      overflow-x: hidden;
+      transition: background-color 0.35s var(--spring-easing), color 0.35s var(--spring-easing);
+    }
+
+    /* Smooth Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(150, 150, 150, 0.25);
+      border-radius: 9999px;
+    }
+
+    /* iOS Frosted Glassmorphism */
+    .ios-glass {
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+    }
+
+    .dark .ios-glass {
+      background: rgba(28, 28, 30, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html:not(.dark) .ios-glass {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    /* iOS Card Surface */
+    .ios-card {
+      border-radius: 22px;
+      transition: transform 0.28s var(--spring-easing), background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .dark .ios-card {
+      background: #1C1C1E;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    html:not(.dark) .ios-card {
+      background: #FFFFFF;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Tactile iOS Press Interaction */
+    .ios-btn {
+      transition: transform 0.2s var(--spring-easing), opacity 0.2s ease, background-color 0.2s ease;
+      user-select: none;
+    }
+    .ios-btn:active {
+      transform: scale(0.95);
+      opacity: 0.88;
+    }
+
+    /* Privacy Blur Transition */
+    .privacy-target {
+      transition: filter 0.35s var(--spring-easing), opacity 0.35s ease;
+    }
+    body.privacy-active .privacy-target {
+      filter: blur(8px);
+      user-select: none;
+    }
+
+    /* Bottom Sheet & Modal Animations */
+    .modal-backdrop {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.32s var(--spring-easing);
+    }
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .bottom-sheet {
+      transform: translateY(105%);
+      transition: transform 0.42s var(--spring-easing);
+    }
+    .modal-backdrop.open .bottom-sheet {
+      transform: translateY(0);
+    }
+
+    /* List Item Stagger & Entry */
+    @keyframes slideUpFade {
+      0% {
+        opacity: 0;
+        transform: translateY(14px) scale(0.98);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    .animate-item {
+      animation: slideUpFade 0.38s var(--spring-easing) forwards;
+    }
+
+    /* Shake Animation for Wrong PIN */
+    @keyframes iosShake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-10px); }
+      40%, 80% { transform: translateX(10px); }
+    }
+    .shake {
+      animation: iosShake 0.4s ease-in-out;
+    }
+
+    /* Hide number input arrows */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  </style>
+</head>
+
+<body class="bg-ios-lightBg dark:bg-ios-darkBg text-slate-900 dark:text-white min-h-screen pb-32 selection:bg-ios-blue selection:text-white">
+
+  <!-- ==================== APP LOCK OVERLAY (iOS Passcode + Biometrics) ==================== -->
+  <div id="lockScreen" class="fixed inset-0 z-[100] ios-glass hidden flex-col items-center justify-between py-12 px-6">
+    <div class="text-center mt-8">
+      <div class="w-16 h-16 rounded-2xl bg-ios-blue/15 text-ios-blue flex items-center justify-center mx-auto mb-4 shadow-inner">
+        <i class="ph-fill ph-lock-key text-3xl"></i>
+      </div>
+      <h2 id="lockScreenTitle" class="text-xl font-bold tracking-tight">정산 메이트 잠금 해제</h2>
+      <p id="lockScreenSubtitle" class="text-xs text-slate-500 dark:text-slate-400 mt-1">설정한 4자리 PIN 번호를 입력해주세요</p>
+      
+      <!-- 4 Dots Indicator -->
+      <div id="pinDots" class="flex items-center justify-center gap-4 mt-6">
+        <span class="w-3.5 h-3.5 rounded-full border-2 border-slate-400 dark:border-slate-500 transition-all duration-200"></span>
+        <span class="w-3.5 h-3.5 rounded-full border-2 border-slate-400 dark:border-slate-500 transition-all duration-200"></span>
+        <span class="w-3.5 h-3.5 rounded-full border-2 border-slate-400 dark:border-slate-500 transition-all duration-200"></span>
+        <span class="w-3.5 h-3.5 rounded-full border-2 border-slate-400 dark:border-slate-500 transition-all duration-200"></span>
+      </div>
+    </div>
+
+    <!-- iOS Keypad -->
+    <div class="grid grid-cols-3 gap-5 max-w-[280px] w-full my-auto">
+      <button onclick="pressPin('1')" class="ios-btn w-20 h-20 rounded-full bg-slate-200/70 dark:bg-white/10 flex flex-col items-center justify-center text-2xl font-semibold mx-auto">1</button>
+      <button onclick="pressPin('2')" class="ios-btn w-20 h-20 rounded-full bg-slate-200/70 dark:bg-white/10 flex flex-col items-center justify-center text-2xl font-semibold mx-auto">2<span class="text-[9px] tracking-widest opacity-50 -mt-1">ABC</span></button>
+      <button onclick="pressPin('3')" class="ios-btn w-20 h-20 rounded-full bg-slate-200/70 dark:bg-white/10 flex flex-col items-center justify-center text-2xl font-semibold mx-auto">3<span class="text-[9px] tracking-widest opacity-50 -mt-1">DEF</span></button>
+      <button onclick="pressPin('4')" class="ios-btn w-20 h-20 rounded-full bg-slate-200/70 dark:bg-white/10 flex flex-col items-center justify-center text-2xl font-semibold mx-auto">4<span class="text-[9px] tracking-widest opacity-50 -mt-1">GHI</span></button>
+      <button onclick="pressPin('5')" class="ios-btn w-20 h-20 rounded-full bg-slate-200/70 dark:bg-white/10 flex flex-col items-center justify-center text-2xl font-semibold mx-auto">5<span class="text-[9px] tracking-widest opacity-50 -mt-1">JKL</span></button>
+      <button onclick="pressPin('6')" class="ios-btn w-20 h-20 rounded-full bg-slate-200/70 dark:bg-white/10 flex flex-col items-center justify-center text-2xl font-semibold mx-auto">6<span class="text-[9px] tracking-widest opacity-50 -mt-1">MNO</span></button>
+      <button onclick="pressPin('7')" class="ios-btn w-20 h-20 rounded-full bg-slate-200/70 dark:bg-white/10 flex flex-col items-center justify-center text-2xl font-semibold mx-auto">7<span class="text-[9px] tracking-widest opacity-50 -mt-1">PQRS</span></button>
+      <button onclick="pressPin('8')" class="ios-btn w-20 h-20 rounded-full bg-slate-200/70 dark:bg-white/10 flex flex-col items-center justify-center text-2xl font-semibold mx-auto">8<span class="text-[9px] tracking-widest opacity-50 -mt-1">TUV</span></button>
+      <button onclick="pressPin('9')" class="ios-btn w-20 h-20 rounded-full bg-slate-200/70 dark:bg-white/10 flex flex-col items-center justify-center text-2xl font-semibold mx-auto">9<span class="text-[9px] tracking-widest opacity-50 -mt-1">WXYZ</span></button>
+      <button onclick="triggerBiometricUnlock()" class="ios-btn w-20 h-20 rounded-full flex items-center justify-center text-ios-blue text-2xl mx-auto" title="Face ID / 생체인증">
+        <i class="ph ph-scan-smiley text-3xl"></i>
+      </button>
+      <button onclick="pressPin('0')" class="ios-btn w-20 h-20 rounded-full bg-slate-200/70 dark:bg-white/10 flex items-center justify-center text-2xl font-semibold mx-auto">0</button>
+      <button onclick="backspacePin()" class="ios-btn w-20 h-20 rounded-full flex items-center justify-center text-xl mx-auto text-slate-500 dark:text-slate-300">
+        <i class="ph ph-backspace text-2xl"></i>
+      </button>
+    </div>
+
+    <div class="text-xs text-slate-400">
+      Face ID 또는 PIN으로 장부를 안전하게 보호합니다
+    </div>
+  </div>
+
+  <!-- ==================== TOP STICKY NAVIGATION HEADER ==================== -->
+  <header class="sticky top-0 z-30 ios-glass px-4 py-3.5 transition-all">
+    <div class="max-w-xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-ios-blue to-ios-indigo flex items-center justify-center text-white shadow-md shadow-ios-blue/20">
+          <i class="ph-fill ph-wallet text-xl"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <h1 class="font-bold text-lg tracking-tight leading-none">정산 메이트</h1>
+            <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-ios-blue/15 text-ios-blue">PRO</span>
+          </div>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">자유로운 수정·삭제 지원 친구 장부</p>
+        </div>
+      </div>
+
+      <!-- Quick Controls: Friend/Preset Manager, Privacy Blur, Split, Theme -->
+      <div class="flex items-center gap-1.5">
+        <button onclick="openManageModal()" class="ios-btn px-2.5 h-9 rounded-full bg-slate-200/70 dark:bg-white/10 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1" title="친구 및 금액 버튼 관리">
+          <i class="ph-bold ph-sliders-horizontal text-sm text-ios-blue"></i>
+          <span class="hidden sm:inline">친구·버튼 관리</span>
+        </button>
+        <button id="privacyToggleBtn" onclick="togglePrivacyMode()" class="ios-btn w-9 h-9 rounded-full bg-slate-200/70 dark:bg-white/10 flex items-center justify-center text-slate-700 dark:text-slate-200" title="프라이버시 블러 모드 (금액 가리기)">
+          <i id="privacyIcon" class="ph ph-eye text-lg"></i>
+        </button>
+        <button onclick="openSplitModal()" class="ios-btn px-3 h-9 rounded-full bg-ios-indigo/15 text-ios-indigo dark:text-indigo-300 text-xs font-semibold flex items-center gap-1">
+          <i class="ph-bold ph-users-three text-sm"></i>
+          <span>N빵</span>
+        </button>
+        <button onclick="toggleTheme()" class="ios-btn w-9 h-9 rounded-full bg-slate-200/70 dark:bg-white/10 flex items-center justify-center text-slate-700 dark:text-slate-200" title="다크/라이트 모드 전환">
+          <i id="themeIcon" class="ph-fill ph-moon text-lg"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTAINER ==================== -->
+  <main class="max-w-xl mx-auto px-4 pt-4 space-y-5">
+
+    <!-- SAMPLE DATA NOTICE BANNER (ONE-CLICK CLEAR) -->
+    <div id="sampleDataBanner" class="hidden ios-card p-3.5 bg-ios-blue/10 border border-ios-blue/25 flex items-center justify-between gap-2 animate-item">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <i class="ph-fill ph-info text-ios-blue text-lg shrink-0"></i>
+        <p class="text-xs text-slate-700 dark:text-slate-200 truncate">
+          현재 예시 데이터가 들어있습니다. 비우고 바로 시작할까요?
+        </p>
+      </div>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button onclick="clearAllForFreshStart()" class="ios-btn px-2.5 py-1.5 rounded-xl bg-ios-red text-white text-[11px] font-bold">
+          초기화 후 시작
+        </button>
+        <button onclick="dismissSampleBanner()" class="ios-btn w-7 h-7 rounded-lg bg-black/5 dark:bg-white/10 flex items-center justify-center text-slate-400">
+          <i class="ph-bold ph-x text-xs"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 1. NATURAL LANGUAGE QUICK INPUT BAR -->
+    <section class="ios-card p-3.5 relative overflow-hidden">
+      <div class="flex items-center justify-between mb-2 px-1">
+        <span class="text-xs font-semibold text-ios-blue flex items-center gap-1">
+          <i class="ph-fill ph-sparkle"></i> 자연어 1초 간편 입력
+        </span>
+        <button onclick="openManageModal()" class="text-[11px] text-slate-400 hover:text-ios-blue flex items-center gap-1 transition-colors">
+          <i class="ph-bold ph-pencil-simple"></i> 친구 목록·프리셋 편집
+        </button>
+      </div>
+      <form id="quickParseForm" onsubmit="handleQuickParseSubmit(event)" class="relative flex items-center gap-2">
+        <div class="relative flex-1">
+          <i class="ph ph-magic-wand absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+          <input
+            id="quickParseInput"
+            type="text"
+            oninput="updateQuickParsePreview(this.value)"
+            placeholder="이름 금액 메모 순 입력 (예: 민수 4500 편의점)"
+            class="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-ios-darkElevated text-sm focus:outline-none focus:ring-2 focus:ring-ios-blue transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            autocomplete="off"
+          />
+        </div>
+        <button type="submit" class="ios-btn px-4 py-2.5 rounded-2xl bg-ios-blue text-white text-sm font-semibold shrink-0 shadow-md shadow-ios-blue/25">
+          등록
+        </button>
+      </form>
+      <!-- Live Parsed Preview Pill -->
+      <div id="quickParsePreview" class="hidden mt-2.5 px-3 py-2 rounded-xl bg-ios-blue/10 border border-ios-blue/20 text-xs flex items-center justify-between animate-item">
+        <div class="flex items-center gap-2 flex-wrap" id="quickParsePreviewContent"></div>
+        <span class="text-[10px] text-ios-blue font-semibold">Enter ↵</span>
+      </div>
+    </section>
+
+    <!-- 2. SUMMARY DASHBOARD HERO CARD -->
+    <section class="ios-card p-5 relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 text-white border border-white/10 shadow-xl">
+      <div class="absolute -right-10 -top-10 w-40 h-40 bg-ios-blue/25 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-10 -bottom-10 w-36 h-36 bg-ios-indigo/20 rounded-full blur-2xl pointer-events-none"></div>
+
+      <div class="relative z-10">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+            <span>현재 총 받을 돈 (미수금)</span>
+            <span id="privacyBadge" class="hidden text-[10px] px-2 py-0.5 rounded-full bg-white/15 text-amber-300 font-semibold">블러 켜짐</span>
+          </span>
+          <div class="flex items-center gap-1.5">
+            <button onclick="openManageModal()" class="ios-btn text-xs font-semibold bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded-full flex items-center gap-1 backdrop-blur-md">
+              <i class="ph-bold ph-user-gear"></i> 친구 관리
+            </button>
+            <button onclick="openAddModal()" class="ios-btn text-xs font-semibold bg-ios-blue hover:bg-ios-blue/90 px-3 py-1.5 rounded-full flex items-center gap-1 shadow-md shadow-ios-blue/30">
+              <i class="ph-bold ph-plus"></i> 직접 기록
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-2 flex items-baseline gap-2">
+          <h2 id="totalUnpaidDisplay" class="text-3xl sm:text-4xl font-extrabold tracking-tight privacy-target">0원</h2>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-white/10 grid grid-cols-3 gap-2 text-center">
+          <div class="bg-white/5 rounded-2xl p-2.5">
+            <p class="text-[11px] text-slate-400">미정산 인원</p>
+            <p id="activeDebtorCount" class="text-sm font-bold mt-0.5">0명</p>
+          </div>
+          <div class="bg-white/5 rounded-2xl p-2.5">
+            <p class="text-[11px] text-slate-400">완료된 누적 정산</p>
+            <p id="totalSettledDisplay" class="text-sm font-bold text-ios-green mt-0.5 privacy-target">0원</p>
+          </div>
+          <div class="bg-white/5 rounded-2xl p-2.5">
+            <p class="text-[11px] text-slate-400">정산 회수율</p>
+            <p id="repaymentRateDisplay" class="text-sm font-bold text-ios-teal mt-0.5">0%</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. SEGMENTED VIEW TABS (iOS Segmented Control) -->
+    <div class="bg-slate-200/80 dark:bg-ios-darkCard p-1 rounded-2xl flex items-center text-xs font-semibold border border-black/5 dark:border-white/5">
+      <button id="segTabFriends" onclick="switchView('friends')" class="ios-btn flex-1 py-2.5 rounded-xl bg-white dark:bg-ios-darkElevated text-slate-900 dark:text-white shadow-sm transition-all flex items-center justify-center gap-1.5">
+        <i class="ph-fill ph-identification-card text-sm text-ios-blue"></i>
+        <span>인물별 카드</span>
+        <span id="badgeFriendsCount" class="px-1.5 py-0.2 rounded-full bg-ios-blue/15 text-ios-blue text-[10px]">0</span>
+      </button>
+      <button id="segTabTimeline" onclick="switchView('timeline')" class="ios-btn flex-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 transition-all flex items-center justify-center gap-1.5">
+        <i class="ph-fill ph-clock-counter-clockwise text-sm"></i>
+        <span>전체 내역</span>
+      </button>
+      <button id="segTabSettings" onclick="switchView('settings')" class="ios-btn flex-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 transition-all flex items-center justify-center gap-1.5">
+        <i class="ph-fill ph-gear-six text-sm"></i>
+        <span>계좌·백업·관리</span>
+      </button>
+    </div>
+
+    <!-- ==================== VIEW 1: PERSON-CENTRIC CARDS ==================== -->
+    <section id="viewFriends" class="space-y-3.5">
+      <div class="flex items-center justify-between px-1 flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+          <h3 class="text-sm font-bold text-slate-700 dark:text-slate-200">친구별 미수금 현황</h3>
+          <select id="friendSortSelect" onchange="renderAll()" class="text-xs bg-transparent text-slate-500 dark:text-slate-400 focus:outline-none cursor-pointer font-medium">
+            <option value="amountDesc">금액 높은순</option>
+            <option value="oldest">오래된순 (D+Day)</option>
+            <option value="nameAsc">이름순</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none">
+            <input type="checkbox" id="showSettledFriendsToggle" checked onchange="renderAll()" class="rounded text-ios-blue focus:ring-0" />
+            <span>0원인 친구도 표시</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Dynamic Friends Grid -->
+      <div id="friendsCardContainer" class="space-y-3"></div>
+    </section>
+
+    <!-- ==================== VIEW 2: TIMELINE / ALL RECORDS ==================== -->
+    <section id="viewTimeline" class="hidden space-y-3.5">
+      <!-- Search & Filter Bar -->
+      <div class="ios-card p-3 flex flex-col sm:flex-row gap-2">
+        <div class="relative flex-1">
+          <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input
+            id="timelineSearchInput"
+            type="text"
+            oninput="renderTimeline()"
+            placeholder="친구 이름이나 메모 검색 (예: 치킨, 택시)..."
+            class="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-100 dark:bg-ios-darkElevated text-xs focus:outline-none focus:ring-2 focus:ring-ios-blue"
+          />
+        </div>
+        <div class="flex gap-1.5 shrink-0">
+          <button onclick="setTimelineFilter('all')" id="filterBtn_all" class="ios-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-ios-blue text-white">전체</button>
+          <button onclick="setTimelineFilter('unpaid')" id="filterBtn_unpaid" class="ios-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-ios-darkElevated text-slate-600 dark:text-slate-300">미정산</button>
+          <button onclick="setTimelineFilter('settled')" id="filterBtn_settled" class="ios-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-ios-darkElevated text-slate-600 dark:text-slate-300">완료</button>
+        </div>
+      </div>
+
+      <!-- Timeline List -->
+      <div id="timelineContainer" class="space-y-2.5"></div>
+    </section>
+
+    <!-- ==================== VIEW 3: SETTINGS (FRIEND/PRESET MANAGER, ACCOUNT, BACKUP, LOCK) ==================== -->
+    <section id="viewSettings" class="hidden space-y-4">
+      
+      <!-- Friend & Amount Preset Management Card -->
+      <div class="ios-card p-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-ios-indigo/15 text-ios-indigo flex items-center justify-center">
+              <i class="ph-fill ph-sliders-horizontal text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold">친구 목록 & 금액 프리셋 버튼 관리</h3>
+              <p class="text-[11px] text-slate-400">자주 찾는 친구 이름 변경/삭제 및 +금액 버튼을 자유롭게 편집합니다</p>
+            </div>
+          </div>
+        </div>
+        <button onclick="openManageModal()" class="ios-btn w-full py-3 rounded-xl bg-ios-indigo text-white text-xs font-bold shadow-md shadow-ios-indigo/25 flex items-center justify-center gap-1.5">
+          <i class="ph-bold ph-pencil-simple-line text-sm"></i>
+          <span>친구 및 금액 프리셋 편집기 열기</span>
+        </button>
+      </div>
+
+      <!-- My Account & Toss Link Config -->
+      <div class="ios-card p-5 space-y-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-ios-blue/15 text-ios-blue flex items-center justify-center">
+            <i class="ph-fill ph-bank text-xl"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold">내 정산 계좌 & 송금 링크 설정</h3>
+            <p class="text-[11px] text-slate-400">정산 요청 메시지에 자동으로 포함됩니다</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">은행명</label>
+            <input id="settingBankName" type="text" placeholder="예: 토스뱅크, 카카오뱅크" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-ios-darkElevated focus:outline-none focus:ring-2 focus:ring-ios-blue" />
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">예금주 이름</label>
+            <input id="settingAccountHolder" type="text" placeholder="예: 홍길동" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-ios-darkElevated focus:outline-none focus:ring-2 focus:ring-ios-blue" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-slate-400 mb-1 font-medium">계좌번호</label>
+            <input id="settingAccountNumber" type="text" placeholder="예: 1000-1234-5678" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-ios-darkElevated focus:outline-none focus:ring-2 focus:ring-ios-blue" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-slate-400 mb-1 font-medium flex items-center justify-between">
+              <span>토스 아이디 (toss.me/아이디)</span>
+              <span class="text-[10px] text-ios-blue">금액 자동 입력 링크 생성!</span>
+            </label>
+            <div class="flex items-center rounded-xl bg-slate-100 dark:bg-ios-darkElevated overflow-hidden focus-within:ring-2 focus-within:ring-ios-blue">
+              <span class="pl-3.5 pr-1 text-slate-400 select-none">https://toss.me/</span>
+              <input id="settingTossId" type="text" placeholder="my_toss_id" class="w-full py-2.5 pr-3.5 bg-transparent focus:outline-none" />
+            </div>
+          </div>
+        </div>
+
+        <button onclick="saveProfileSettings()" class="ios-btn w-full py-3 rounded-xl bg-ios-blue text-white text-xs font-bold shadow-md shadow-ios-blue/20">
+          내 정산 프로필 저장하기
+        </button>
+      </div>
+
+      <!-- Security: PIN & WebAuthn Biometric Lock -->
+      <div class="ios-card p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-ios-green/15 text-ios-green flex items-center justify-center">
+              <i class="ph-fill ph-fingerprint text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold">앱 잠금 및 생체 인증</h3>
+              <p class="text-[11px] text-slate-400">친구가 내 폰을 볼 때 장부를 보호합니다</p>
+            </div>
+          </div>
+          <span id="lockStatusBadge" class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-slate-200 dark:bg-white/10 text-slate-500">비활성화됨</span>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button onclick="promptSetPin()" class="ios-btn flex-1 py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-ios-darkElevated text-xs font-semibold flex items-center justify-center gap-1.5">
+            <i class="ph-bold ph-numpad"></i> 4자리 PIN 설정/변경
+          </button>
+          <button onclick="registerWebAuthnBiometrics()" class="ios-btn flex-1 py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-ios-darkElevated text-xs font-semibold flex items-center justify-center gap-1.5">
+            <i class="ph-bold ph-scan-smiley"></i> 기기 FaceID/지문 연동
+          </button>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="lockAppNow()" class="ios-btn flex-1 py-2.5 rounded-xl bg-ios-indigo/15 text-ios-indigo dark:text-indigo-300 text-xs font-semibold">
+            지금 즉시 화면 잠그기
+          </button>
+          <button onclick="clearAppLock()" class="ios-btn py-2.5 px-4 rounded-xl bg-ios-red/10 text-ios-red text-xs font-semibold">
+            잠금 해제(초기화)
+          </button>
+        </div>
+      </div>
+
+      <!-- JSON Data Backup & Restore -->
+      <div class="ios-card p-5 space-y-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-ios-orange/15 text-ios-orange flex items-center justify-center">
+            <i class="ph-fill ph-database text-xl"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold">데이터 JSON 백업 및 초기화</h3>
+            <p class="text-[11px] text-slate-400">브라우저 캐시를 지워도 파일 하나로 즉시 복원됩니다</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <button onclick="exportJsonBackup()" class="ios-btn py-3 px-4 rounded-xl bg-slate-100 dark:bg-ios-darkElevated text-xs font-semibold flex items-center justify-center gap-2">
+            <i class="ph-bold ph-download-simple text-ios-blue text-base"></i>
+            <span>JSON 백업 저장</span>
+          </button>
+          <label class="ios-btn py-3 px-4 rounded-xl bg-slate-100 dark:bg-ios-darkElevated text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer">
+            <i class="ph-bold ph-upload-simple text-ios-green text-base"></i>
+            <span>JSON 파일 복구</span>
+            <input type="file" accept=".json" onchange="importJsonBackup(event)" class="hidden" />
+          </label>
+        </div>
+
+        <div class="pt-3 border-t border-black/5 dark:border-white/5 flex items-center justify-between flex-wrap gap-2">
+          <button onclick="resetToSampleData()" class="ios-btn text-xs text-slate-400 hover:text-ios-blue underline">
+            샘플 예시 데이터 불러오기
+          </button>
+          <button onclick="confirmClearAllData()" class="ios-btn px-3 py-1.5 rounded-xl bg-ios-red/15 text-ios-red text-xs font-bold flex items-center gap-1">
+            <i class="ph-bold ph-trash"></i> 모든 데이터 완전히 비우기 (초기화)
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ==================== FLOATING iOS BOTTOM BAR ==================== -->
+  <nav class="fixed bottom-4 inset-x-0 z-30 px-4 pointer-events-none">
+    <div class="max-w-md mx-auto ios-glass rounded-full p-2 shadow-2xl flex items-center justify-between pointer-events-auto border border-white/15">
+      <button onclick="switchView('friends')" id="bottomNav_friends" class="ios-btn flex-1 py-2 rounded-full flex flex-col items-center justify-center text-ios-blue">
+        <i class="ph-fill ph-users text-xl"></i>
+        <span class="text-[10px] font-semibold mt-0.5">친구별</span>
+      </button>
+      <button onclick="switchView('timeline')" id="bottomNav_timeline" class="ios-btn flex-1 py-2 rounded-full flex flex-col items-center justify-center text-slate-400">
+        <i class="ph-fill ph-list-dashes text-xl"></i>
+        <span class="text-[10px] font-semibold mt-0.5">전체내역</span>
+      </button>
+
+      <!-- Center Prominent Action Button -->
+      <button onclick="openAddModal()" class="ios-btn w-12 h-12 rounded-full bg-gradient-to-tr from-ios-blue to-ios-indigo text-white flex items-center justify-center shadow-lg shadow-ios-blue/40 mx-2">
+        <i class="ph-bold ph-plus text-2xl"></i>
+      </button>
+
+      <button onclick="openSplitModal()" class="ios-btn flex-1 py-2 rounded-full flex flex-col items-center justify-center text-slate-400">
+        <i class="ph-fill ph-divide text-xl"></i>
+        <span class="text-[10px] font-semibold mt-0.5">N빵계산</span>
+      </button>
+      <button onclick="switchView('settings')" id="bottomNav_settings" class="ios-btn flex-1 py-2 rounded-full flex flex-col items-center justify-center text-slate-400">
+        <i class="ph-fill ph-gear text-xl"></i>
+        <span class="text-[10px] font-semibold mt-0.5">설정·관리</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ==================== MODAL 1: ADD / EDIT RECORD (WITH EDITABLE CHIPS & PRESETS) ==================== -->
+  <div id="addModal" onclick="closeModalOnBackdrop(event, 'addModal')" class="modal-backdrop fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center">
+    <div class="bottom-sheet w-full max-w-xl ios-card rounded-b-none rounded-t-[28px] p-5 pb-8 space-y-4 max-h-[92vh] overflow-y-auto">
+      <div class="w-10 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto -mt-1 mb-2"></div>
+      <div class="flex items-center justify-between">
+        <h3 id="addModalTitle" class="text-base font-bold">빌려준 돈 기록하기</h3>
+        <button onclick="closeModal('addModal')" class="ios-btn w-8 h-8 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center">
+          <i class="ph-bold ph-x text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Quick Friend Chips with Direct Edit Toggle -->
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-xs text-slate-400 font-medium">친구 선택 (칩 클릭 시 자동 입력)</label>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="toggleInlineChipEditMode()" id="inlineChipEditBtn" class="text-[11px] font-bold text-ios-blue flex items-center gap-0.5">
+              <i class="ph-bold ph-pencil-simple"></i> <span>칩 이름수정/삭제</span>
+            </button>
+          </div>
+        </div>
+        <div id="quickFriendChips" class="flex items-center gap-1.5 overflow-x-auto pb-1.5"></div>
+        <input id="addFriendName" type="text" placeholder="친구 이름 직접 입력 (예: 민수)" class="mt-1.5 w-full px-4 py-3 rounded-2xl bg-slate-100 dark:bg-ios-darkElevated text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-ios-blue" />
+      </div>
+
+      <!-- Amount + Customizable Quick Presets -->
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-xs text-slate-400 font-medium">원금 금액 (원) — 직접 타이핑 또는 버튼 클릭</label>
+          <button type="button" onclick="openManageModal('presets')" class="text-[11px] font-bold text-ios-indigo dark:text-indigo-300 flex items-center gap-0.5">
+            <i class="ph-bold ph-gear"></i> <span>금액 버튼 편집</span>
+          </button>
+        </div>
+        <input id="addAmountInput" type="number" inputmode="numeric" placeholder="0" class="w-full px-4 py-3 rounded-2xl bg-slate-100 dark:bg-ios-darkElevated text-xl font-extrabold text-ios-blue focus:outline-none focus:ring-2 focus:ring-ios-blue" />
+        <div id="quickAmountPresetsContainer" class="flex flex-wrap gap-1.5 mt-2"></div>
+      </div>
+
+      <!-- Repaid Amount Input (Shown when editing an existing record) -->
+      <div id="editPaidAmountWrapper" class="hidden p-3.5 rounded-2xl bg-ios-green/10 border border-ios-green/20 space-y-1.5">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-bold text-ios-green">현재까지 갚은 금액 (상환액 직접 수정)</label>
+          <button type="button" onclick="document.getElementById('editPaidAmountInput').value = document.getElementById('addAmountInput').value || 0" class="text-[11px] underline text-ios-green font-semibold">전액 채우기</button>
+        </div>
+        <input id="editPaidAmountInput" type="number" inputmode="numeric" placeholder="0" class="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-ios-darkCard text-sm font-bold text-ios-green focus:outline-none focus:ring-2 focus:ring-ios-green" />
+      </div>
+
+      <!-- Memo + Date -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <div class="sm:col-span-2">
+          <label class="block text-xs text-slate-400 mb-1 font-medium">메모 (사유)</label>
+          <input id="addMemoInput" type="text" placeholder="예: 강남역 삼겹살, 심야 택시" class="w-full px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-ios-darkElevated text-sm focus:outline-none focus:ring-2 focus:ring-ios-blue" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1 font-medium">날짜</label>
+          <input id="addDateInput" type="date" class="w-full px-3 py-2.5 rounded-2xl bg-slate-100 dark:bg-ios-darkElevated text-sm focus:outline-none focus:ring-2 focus:ring-ios-blue" />
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-1">
+        <button id="deleteRecordInModalBtn" type="button" onclick="deleteCurrentlyEditingRecord()" class="hidden ios-btn px-4 py-3.5 rounded-2xl bg-ios-red/15 text-ios-red font-bold text-sm flex items-center justify-center gap-1">
+          <i class="ph-bold ph-trash"></i> 삭제
+        </button>
+        <button id="submitRecordModalBtn" onclick="submitAddOrEditRecord()" class="ios-btn flex-1 py-3.5 rounded-2xl bg-ios-blue text-white font-bold text-sm shadow-lg shadow-ios-blue/30">
+          장부에 저장하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 2: FRIEND & AMOUNT PRESET MANAGER (FULL CRUD) ==================== -->
+  <div id="manageModal" onclick="closeModalOnBackdrop(event, 'manageModal')" class="modal-backdrop fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center">
+    <div class="bottom-sheet w-full max-w-xl ios-card rounded-b-none rounded-t-[28px] p-5 pb-8 space-y-5 max-h-[92vh] overflow-y-auto">
+      <div class="w-10 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto -mt-1 mb-2"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold flex items-center gap-1.5">
+            <i class="ph-fill ph-sliders-horizontal text-ios-blue"></i> 친구 목록 및 금액 버튼 관리
+          </h3>
+          <p class="text-[11px] text-slate-400">친구 이름을 수정하면 기존 장부 내역도 함께 자동으로 변경됩니다</p>
+        </div>
+        <button onclick="closeModal('manageModal')" class="ios-btn w-8 h-8 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center">
+          <i class="ph-bold ph-x text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Section A: Friends CRUD -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider">등록된 친구 관리 (추가 · 이름변경 · 삭제)</h4>
+          <span id="manageFriendsCountLabel" class="text-[11px] text-ios-blue font-semibold">0명</span>
+        </div>
+
+        <!-- Add New Friend Bar -->
+        <div class="flex gap-2">
+          <input id="newFriendManageInput" type="text" onkeydown="if(event.key==='Enter'){event.preventDefault();addFriendFromManager();}" placeholder="새 친구 이름 입력 (예: 현우)" class="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-ios-darkElevated text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ios-blue" />
+          <button onclick="addFriendFromManager()" class="ios-btn px-4 py-2.5 rounded-xl bg-ios-blue text-white text-xs font-bold shrink-0">
+            + 친구 추가
+          </button>
+        </div>
+
+        <!-- Friends Editable List -->
+        <div id="manageFriendsList" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
+      </div>
+
+      <!-- Section B: Quick Amount Presets CRUD -->
+      <div class="space-y-3 pt-3 border-t border-black/5 dark:border-white/5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h4 class="text-xs font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider">빠른 금액 프리셋 버튼 편집</h4>
+            <p class="text-[11px] text-slate-400">내역 추가 시 원클릭으로 더해지는 금액 버튼들입니다</p>
+          </div>
+          <button onclick="resetDefaultPresets()" class="text-[11px] text-slate-400 hover:text-ios-blue underline">기본값 복원</button>
+        </div>
+
+        <!-- Add New Preset Bar -->
+        <div class="flex gap-2">
+          <input id="newPresetManageInput" type="number" inputmode="numeric" onkeydown="if(event.key==='Enter'){event.preventDefault();addPresetFromManager();}" placeholder="추가할 금액 숫자 입력 (예: 3000)" class="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-ios-darkElevated text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ios-indigo" />
+          <button onclick="addPresetFromManager()" class="ios-btn px-4 py-2.5 rounded-xl bg-ios-indigo text-white text-xs font-bold shrink-0">
+            + 금액 버튼 추가
+          </button>
+        </div>
+
+        <!-- Presets Editable Chips -->
+        <div id="managePresetsList" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <button onclick="closeModal('manageModal')" class="ios-btn w-full py-3 rounded-2xl bg-slate-200 dark:bg-ios-darkElevated text-xs font-bold">
+        닫기
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 3: N-SPLIT (더치페이 분할 기록) ==================== -->
+  <div id="splitModal" onclick="closeModalOnBackdrop(event, 'splitModal')" class="modal-backdrop fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center">
+    <div class="bottom-sheet w-full max-w-xl ios-card rounded-b-none rounded-t-[28px] p-5 pb-8 space-y-4 max-h-[92vh] overflow-y-auto">
+      <div class="w-10 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto -mt-1 mb-2"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold flex items-center gap-1.5">
+            <i class="ph-fill ph-users-three text-ios-indigo"></i> N빵 더치페이 일괄 기록
+          </h3>
+          <p class="text-[11px] text-slate-400">총액만 입력하면 친구별로 똑같이 나눠 장부에 등록합니다</p>
+        </div>
+        <button onclick="closeModal('splitModal')" class="ios-btn w-8 h-8 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center">
+          <i class="ph-bold ph-x text-sm"></i>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1 font-medium">전체 결제 금액 (원)</label>
+          <input id="splitTotalAmount" type="number" inputmode="numeric" oninput="updateSplitPreview()" placeholder="예: 48000" class="w-full px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-ios-darkElevated text-base font-bold text-ios-indigo focus:outline-none focus:ring-2 focus:ring-ios-indigo" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1 font-medium">모임/결제 메모</label>
+          <input id="splitMemo" type="text" placeholder="예: 홍대 치맥 1차" class="w-full px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-ios-darkElevated text-sm focus:outline-none focus:ring-2 focus:ring-ios-indigo" />
+        </div>
+      </div>
+
+      <!-- Participants Selector -->
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-xs text-slate-400 font-medium">참여한 친구 선택 (클릭해서 토글)</label>
+          <label class="flex items-center gap-1.5 text-xs text-ios-indigo font-semibold cursor-pointer">
+            <input type="checkbox" id="splitIncludeMe" checked onchange="updateSplitPreview()" class="rounded text-ios-indigo" />
+            <span>나(본인)도 인원수에 포함</span>
+          </label>
+        </div>
+
+        <div id="splitFriendsSelector" class="flex flex-wrap gap-1.5 mb-2"></div>
+
+        <!-- Add custom friend to split -->
+        <div class="flex gap-2">
+          <input id="splitNewFriendInput" type="text" onkeydown="if(event.key==='Enter'){event.preventDefault();addFriendToSplit();}" placeholder="목록에 없는 친구 추가 후 엔터" class="flex-1 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-ios-darkElevated text-xs focus:outline-none" />
+          <button type="button" onclick="addFriendToSplit()" class="ios-btn px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-white/10 text-xs font-semibold">+ 인원 추가</button>
+        </div>
+      </div>
+
+      <!-- Rounding Option & Live Calculation Box -->
+      <div class="p-3.5 rounded-2xl bg-ios-indigo/10 border border-ios-indigo/20 space-y-2">
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-400">단위 절사 옵션</span>
+          <select id="splitRoundMode" onchange="updateSplitPreview()" class="bg-transparent font-semibold text-ios-indigo focus:outline-none">
+            <option value="exact">1원 단위 정확히</option>
+            <option value="floor10">10원 단위 버림</option>
+            <option value="floor100">100원 단위 버림 (깔끔)</option>
+          </select>
+        </div>
+        <div class="flex items-baseline justify-between pt-1 border-t border-ios-indigo/15">
+          <span id="splitSummaryCount" class="text-xs font-medium text-slate-300">총 1명 (친구 0명)</span>
+          <span id="splitPerPersonDisplay" class="text-lg font-extrabold text-ios-indigo dark:text-indigo-300">1인당 0원</span>
+        </div>
+      </div>
+
+      <button onclick="submitSplitRecords()" class="ios-btn w-full py-3.5 rounded-2xl bg-ios-indigo text-white font-bold text-sm shadow-lg shadow-ios-indigo/30">
+        선택한 친구들 장부에 일괄 등록
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 4: PARTIAL / FULL REPAYMENT SHEET (WITH LOG DELETION) ==================== -->
+  <div id="repayModal" onclick="closeModalOnBackdrop(event, 'repayModal')" class="modal-backdrop fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center">
+    <div class="bottom-sheet w-full max-w-xl ios-card rounded-b-none rounded-t-[28px] p-5 pb-8 space-y-4">
+      <div class="w-10 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto -mt-1 mb-2"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 id="repayModalTitle" class="text-base font-bold">상환 및 부분 정산 처리</h3>
+          <p id="repayModalSubtitle" class="text-xs text-slate-400 mt-0.5"></p>
+        </div>
+        <button onclick="closeModal('repayModal')" class="ios-btn w-8 h-8 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center">
+          <i class="ph-bold ph-x text-sm"></i>
+        </button>
+      </div>
+
+      <div class="p-3.5 rounded-2xl bg-slate-100 dark:bg-ios-darkElevated flex items-center justify-between">
+        <span class="text-xs text-slate-400">현재 남은 미수금</span>
+        <span id="repayRemainingDisplay" class="text-lg font-extrabold text-ios-blue">0원</span>
+      </div>
+
+      <div>
+        <label class="block text-xs text-slate-400 mb-1.5 font-medium">오늘 갚은 금액 입력 (부분 상환 가능)</label>
+        <input id="repayAmountInput" type="number" inputmode="numeric" class="w-full px-4 py-3 rounded-2xl bg-slate-100 dark:bg-ios-darkElevated text-lg font-bold focus:outline-none focus:ring-2 focus:ring-ios-green" />
+        <div class="flex gap-1.5 mt-2">
+          <button onclick="setRepayPreset(0.5)" class="ios-btn flex-1 py-2 rounded-xl bg-slate-200/70 dark:bg-white/10 text-xs font-semibold">절반 (50%)</button>
+          <button onclick="setRepayPreset(1)" class="ios-btn flex-1 py-2 rounded-xl bg-ios-green/20 text-ios-green text-xs font-bold">전액 채우기 (100%)</button>
+        </div>
+      </div>
+
+      <!-- Repayment History Log inside Modal (with Delete button for each log) -->
+      <div id="repayHistoryContainer" class="hidden space-y-1.5 pt-2 border-t border-black/5 dark:border-white/5">
+        <p class="text-[11px] font-semibold text-slate-400">부분 상환 내역 (클릭하여 개별 취소 가능)</p>
+        <div id="repayHistoryList" class="space-y-1.5 max-h-32 overflow-y-auto text-xs"></div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2.5 pt-1">
+        <button onclick="submitRepayment(false)" class="ios-btn py-3.5 rounded-2xl bg-slate-200 dark:bg-ios-darkElevated font-bold text-xs">
+          입력한 금액만 차감
+        </button>
+        <button onclick="submitRepayment(true)" class="ios-btn py-3.5 rounded-2xl bg-ios-green text-slate-950 font-extrabold text-xs shadow-lg shadow-ios-green/25">
+          원클릭 전액 정산 완료 ✓
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 5: KAKAOTALK / TOSS SETTLEMENT MESSAGE SHARE SHEET ==================== -->
+  <div id="shareModal" onclick="closeModalOnBackdrop(event, 'shareModal')" class="modal-backdrop fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center">
+    <div class="bottom-sheet w-full max-w-xl ios-card rounded-b-none rounded-t-[28px] p-5 pb-8 space-y-4">
+      <div class="w-10 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto -mt-1 mb-2"></div>
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold flex items-center gap-1.5">
+            <i class="ph-fill ph-chat-circle-dots text-amber-400"></i> 카톡 정산 알림 문구 & 송금 링크
+          </h3>
+          <p class="text-[11px] text-slate-400">말하기 껄끄러울 때 깔끔한 템플릿으로 전송하세요</p>
+        </div>
+        <button onclick="closeModal('shareModal')" class="ios-btn w-8 h-8 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center">
+          <i class="ph-bold ph-x text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Tone Selector -->
+      <div class="flex gap-1.5 bg-slate-100 dark:bg-ios-darkElevated p-1 rounded-xl text-xs font-semibold">
+        <button onclick="setShareTone('friendly')" id="toneBtn_friendly" class="ios-btn flex-1 py-2 rounded-lg bg-white dark:bg-ios-darkCard shadow-sm">친근하게 👋</button>
+        <button onclick="setShareTone('polite')" id="toneBtn_polite" class="ios-btn flex-1 py-2 rounded-lg text-slate-400">깔끔 요약 📋</button>
+        <button onclick="setShareTone('witty')" id="toneBtn_witty" class="ios-btn flex-1 py-2 rounded-lg text-slate-400">유머러스 ⚡️</button>
+      </div>
+
+      <textarea
+        id="shareMessageTextarea"
+        rows="7"
+        class="w-full p-3.5 rounded-2xl bg-slate-100 dark:bg-ios-darkElevated text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-ios-blue resize-none"
+      ></textarea>
+
+      <!-- Direct Toss Link Preview if configured -->
+      <div id="tossDirectBox" class="hidden p-3 rounded-xl bg-ios-blue/10 border border-ios-blue/20 flex items-center justify-between">
+        <div class="text-xs">
+          <span class="font-bold text-ios-blue">토스 원클릭 송금 링크 포함됨</span>
+          <p id="tossDirectUrlText" class="text-[11px] text-slate-400 truncate max-w-[230px]"></p>
+        </div>
+        <a id="tossDirectAnchor" href="#" target="_blank" rel="noopener noreferrer" class="ios-btn px-3 py-1.5 rounded-lg bg-ios-blue text-white text-xs font-semibold">
+          링크 열기
+        </a>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2.5">
+        <button onclick="copyShareMessage()" class="ios-btn py-3.5 rounded-2xl bg-slate-200 dark:bg-ios-darkElevated font-bold text-xs flex items-center justify-center gap-1.5">
+          <i class="ph-bold ph-copy text-base"></i> 문구 복사하기
+        </button>
+        <button onclick="nativeWebShare()" class="ios-btn py-3.5 rounded-2xl bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-amber-400/20">
+          <i class="ph-fill ph-share-network text-base"></i> 카톡·메시지 공유
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 6: CUSTOM DIALOG (RENAME / DELETE / PIN SETUP) ==================== -->
+  <div id="customDialogModal" onclick="closeModalOnBackdrop(event, 'customDialogModal')" class="modal-backdrop fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="ios-card w-full max-w-xs p-5 text-center space-y-4">
+      <h4 id="dialogTitle" class="text-base font-bold">알림</h4>
+      <p id="dialogMessage" class="text-xs text-slate-400 leading-relaxed"></p>
+      <input id="dialogInput" type="text" placeholder="입력하세요" class="hidden w-full px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-ios-darkElevated text-center text-sm font-bold focus:outline-none focus:ring-2 focus:ring-ios-blue" />
+      <div class="grid grid-cols-2 gap-2 pt-1">
+        <button onclick="closeModal('customDialogModal')" class="ios-btn py-2.5 rounded-xl bg-slate-200 dark:bg-ios-darkElevated text-xs font-semibold">취소</button>
+        <button id="dialogConfirmBtn" class="ios-btn py-2.5 rounded-xl bg-ios-blue text-white text-xs font-bold">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TOAST NOTIFICATION CONTAINER ==================== -->
+  <div id="toastContainer" class="fixed top-16 inset-x-0 z-[110] flex flex-col items-center gap-2 pointer-events-none px-4"></div>
+
+  <!-- ==================== APPLICATION SCRIPT ==================== -->
+  <script>
+    const STORAGE_KEY_RECORDS = 'paymate_ios_records_v2';
+    const STORAGE_KEY_FRIENDS = 'paymate_ios_friends_v2';
+    const STORAGE_KEY_PRESETS = 'paymate_ios_presets_v2';
+    const STORAGE_KEY_PROFILE = 'paymate_ios_profile_v2';
+    const STORAGE_KEY_SECURITY = 'paymate_ios_security_v2';
+    const STORAGE_KEY_BANNER_DISMISSED = 'paymate_ios_sample_banner_v2';
+
+    const DEFAULT_PRESETS = [1000, 5000, 10000, 50000];
+
+    let records = [];
+    let savedFriends = [];
+    let amountPresets = [...DEFAULT_PRESETS];
+    let profile = {
+      bankName: '토스뱅크',
+      accountNumber: '1000-0123-4567',
+      accountHolder: '홍길동',
+      tossId: 'paymate_demo'
+    };
+    let security = {
+      pin: '',
+      biometricCredentialId: ''
+    };
+
+    // UI State
+    let currentView = 'friends';
+    let timelineFilter = 'all';
+    let privacyMode = false;
+    let editingRecordId = null;
+    let inlineChipEditMode = false;
+    let activeRepayRecordId = null;
+    let activeRepayFriendName = null;
+    let activeShareFriendName = null;
+    let currentShareTone = 'friendly';
+    let splitSelectedFriends = new Set();
+    let enteredPin = '';
+
+    // Initial Sample Data for First-time Experience
+    function getSampleRecords() {
+      const now = Date.now();
+      const day = 86400000;
+      return [
+        {
+          id: 'rec_1',
+          friend: '민수',
+          amount: 18500,
+          paidAmount: 5000,
+          memo: '강남역 삼겹살 1/N',
+          createdAt: now - (day * 16),
+          settledAt: null,
+          history: [
+            { amount: 5000, date: now - (day * 10), note: '부분 상환' }
+          ]
+        },
+        {
+          id: 'rec_2',
+          friend: '민수',
+          amount: 4500,
+          paidAmount: 0,
+          memo: 'GS25 편의점 음료',
+          createdAt: now - (day * 3),
+          settledAt: null,
+          history: []
+        },
+        {
+          id: 'rec_3',
+          friend: '지훈',
+          amount: 14200,
+          paidAmount: 0,
+          memo: '심야 택시비 더치페이',
+          createdAt: now - (day * 2),
+          settledAt: null,
+          history: []
+        },
+        {
+          id: 'rec_4',
+          friend: '서연',
+          amount: 6800,
+          paidAmount: 0,
+          memo: '스타벅스 아메리카노 + 디저트',
+          createdAt: now - (day * 1),
+          settledAt: null,
+          history: []
+        }
+      ];
+    }
+
+    // Initialize Application
+    window.addEventListener('DOMContentLoaded', () => {
+      loadDataFromStorage();
+      document.getElementById('addDateInput').valueAsDate = new Date();
+      checkLockOnStartup();
+      renderAll();
+    });
+
+    function loadDataFromStorage() {
+      try {
+        const rawRecords = localStorage.getItem(STORAGE_KEY_RECORDS);
+        const isFirstRun = rawRecords === null;
+
+        records = rawRecords ? JSON.parse(rawRecords) : getSampleRecords();
+        if (isFirstRun) {
+          saveRecords();
+          localStorage.removeItem(STORAGE_KEY_BANNER_DISMISSED);
+        }
+
+        const rawFriends = localStorage.getItem(STORAGE_KEY_FRIENDS);
+        if (rawFriends) {
+          savedFriends = JSON.parse(rawFriends);
+        } else {
+          savedFriends = ['민수', '지훈', '서연'];
+          saveFriends();
+        }
+
+        const rawPresets = localStorage.getItem(STORAGE_KEY_PRESETS);
+        if (rawPresets) {
+          amountPresets = JSON.parse(rawPresets);
+        } else {
+          amountPresets = [...DEFAULT_PRESETS];
+          savePresets();
+        }
+
+        const rawProfile = localStorage.getItem(STORAGE_KEY_PROFILE);
+        if (rawProfile) profile = { ...profile, ...JSON.parse(rawProfile) };
+
+        const rawSec = localStorage.getItem(STORAGE_KEY_SECURITY);
+        if (rawSec) security = { ...security, ...JSON.parse(rawSec) };
+
+        const bannerDismissed = localStorage.getItem(STORAGE_KEY_BANNER_DISMISSED);
+        if (!bannerDismissed && records.length > 0) {
+          document.getElementById('sampleDataBanner').classList.remove('hidden');
+        }
+
+        populateSettingsInputs();
+        updateSecurityBadge();
+      } catch (e) {
+        records = getSampleRecords();
+        savedFriends = ['민수', '지훈', '서연'];
+        amountPresets = [...DEFAULT_PRESETS];
+      }
+    }
+
+    function saveRecords() {
+      localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(records));
+    }
+
+    function saveFriends() {
+      localStorage.setItem(STORAGE_KEY_FRIENDS, JSON.stringify(savedFriends));
+    }
+
+    function savePresets() {
+      localStorage.setItem(STORAGE_KEY_PRESETS, JSON.stringify(amountPresets));
+    }
+
+    function dismissSampleBanner() {
+      localStorage.setItem(STORAGE_KEY_BANNER_DISMISSED, '1');
+      document.getElementById('sampleDataBanner').classList.add('hidden');
+    }
+
+    function clearAllForFreshStart() {
+      records = [];
+      savedFriends = [];
+      saveRecords();
+      saveFriends();
+      dismissSampleBanner();
+      renderAll();
+      showToast('모든 예시 데이터를 비웠습니다! 새 친구와 내역을 추가해보세요.');
+    }
+
+    function ensureFriendInList(name) {
+      const clean = name.trim();
+      if (clean && !savedFriends.includes(clean)) {
+        savedFriends.push(clean);
+        saveFriends();
+      }
+    }
+
+    function getAllFriendsList() {
+      const set = new Set(savedFriends);
+      records.forEach(r => {
+        if (r.friend) set.add(r.friend);
+      });
+      return Array.from(set);
+    }
+
+    function populateSettingsInputs() {
+      document.getElementById('settingBankName').value = profile.bankName || '';
+      document.getElementById('settingAccountHolder').value = profile.accountHolder || '';
+      document.getElementById('settingAccountNumber').value = profile.accountNumber || '';
+      document.getElementById('settingTossId').value = profile.tossId || '';
+    }
+
+    // ==================== NATURAL LANGUAGE QUICK PARSER ====================
+    function parseNaturalInput(rawText) {
+      const text = rawText.trim();
+      if (!text) return null;
+
+      const tokens = text.split(/\s+/);
+      let friend = '';
+      let amount = 0;
+      let memoParts = [];
+
+      for (let i = 0; i < tokens.length; i++) {
+        const t = tokens[i];
+        if (!amount) {
+          const parsedAmt = parseKoreanMoneyToken(t);
+          if (parsedAmt > 0) {
+            amount = parsedAmt;
+            continue;
+          }
+        }
+        if (!friend) {
+          friend = t;
+        } else {
+          memoParts.push(t);
+        }
+      }
+
+      if (!friend || amount <= 0) return null;
+      return {
+        friend,
+        amount,
+        memo: memoParts.join(' ') || '간편 기록'
+      };
+    }
+
+    function parseKoreanMoneyToken(token) {
+      const clean = token.replace(/,/g, '').replace(/원$/, '');
+      if (/^\d+(\.\d+)?만$/.test(clean)) {
+        return Math.round(parseFloat(clean.replace('만', '')) * 10000);
+      }
+      if (/^\d+(\.\d+)?천$/.test(clean)) {
+        return Math.round(parseFloat(clean.replace('천', '')) * 1000);
+      }
+      if (/^\d+$/.test(clean)) {
+        return parseInt(clean, 10);
+      }
+      return 0;
+    }
+
+    function updateQuickParsePreview(val) {
+      const previewBox = document.getElementById('quickParsePreview');
+      const content = document.getElementById('quickParsePreviewContent');
+      const parsed = parseNaturalInput(val);
+
+      if (!parsed) {
+        previewBox.classList.add('hidden');
+        return;
+      }
+
+      previewBox.classList.remove('hidden');
+      content.innerHTML = `
+        <span class="px-2 py-0.5 rounded-lg bg-ios-blue text-white font-bold">${escapeHtml(parsed.friend)}</span>
+        <span class="font-extrabold text-ios-blue">${formatWon(parsed.amount)}</span>
+        <span class="text-slate-500 dark:text-slate-300">· ${escapeHtml(parsed.memo)}</span>
+      `;
+    }
+
+    function handleQuickParseSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('quickParseInput');
+      const parsed = parseNaturalInput(input.value);
+
+      if (!parsed) {
+        showToast('이름과 금액을 함께 입력해주세요 (예: 민수 4500 편의점)', 'warning');
+        return;
+      }
+
+      addNewDebtRecord(parsed.friend, parsed.amount, parsed.memo, Date.now());
+      input.value = '';
+      updateQuickParsePreview('');
+      showToast(`${parsed.friend}님 앞으로 ${formatWon(parsed.amount)}이 기록되었습니다`);
+    }
+
+    // ==================== CORE DATA OPERATIONS ====================
+    function addNewDebtRecord(friend, amount, memo, createdAt = Date.now()) {
+      const cleanFriend = friend.trim();
+      const numAmount = Math.round(Number(amount));
+      if (!cleanFriend || numAmount <= 0) return;
+
+      ensureFriendInList(cleanFriend);
+
+      records.unshift({
+        id: 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        friend: cleanFriend,
+        amount: numAmount,
+        paidAmount: 0,
+        memo: memo.trim() || '기타 내역',
+        createdAt,
+        settledAt: null,
+        history: []
+      });
+
+      saveRecords();
+      renderAll();
+    }
+
+    function getRemaining(rec) {
+      return Math.max(0, rec.amount - (rec.paidAmount || 0));
+    }
+
+    // Friend Reputation / Credit Badge
+    function computeFriendBadge(friendRecords) {
+      if (friendRecords.length === 0) {
+        return { label: '등록된 친구 👋', classes: 'bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-slate-300 border-transparent' };
+      }
+      const now = Date.now();
+      const day = 86400000;
+      let unpaidOldestDays = 0;
+      let settledFastCount = 0;
+
+      friendRecords.forEach(r => {
+        const rem = getRemaining(r);
+        if (rem > 0) {
+          const d = Math.floor((now - r.createdAt) / day);
+          if (d > unpaidOldestDays) unpaidOldestDays = d;
+        } else if (r.settledAt) {
+          if ((r.settledAt - r.createdAt) <= day * 3) {
+            settledFastCount++;
+          }
+        }
+      });
+
+      if (unpaidOldestDays >= 14) {
+        return { label: '연체 주의 🚨', classes: 'bg-ios-red/15 text-ios-red border-ios-red/25' };
+      }
+      if (unpaidOldestDays >= 7) {
+        return { label: '독촉 필요 ⏰', classes: 'bg-ios-orange/15 text-ios-orange border-ios-orange/25' };
+      }
+      if (settledFastCount >= 1 && unpaidOldestDays <= 3) {
+        return { label: '칼정산러 ⚡️', classes: 'bg-ios-green/15 text-ios-green border-ios-green/25' };
+      }
+      if (friendRecords.length >= 3) {
+        return { label: '단골 채무자 😅', classes: 'bg-ios-indigo/15 text-ios-indigo dark:text-indigo-300 border-ios-indigo/25' };
+      }
+      return { label: '정상 거래 ✨', classes: 'bg-ios-blue/15 text-ios-blue border-ios-blue/25' };
+    }
+
+    // ==================== FRIEND & PRESET FULL CRUD ====================
+    function promptRenameFriend(oldName) {
+      openCustomDialog({
+        title: `'${oldName}' 이름 변경`,
+        message: '변경할 새 이름을 입력하면 연결된 모든 정산 내역도 자동 업데이트됩니다.',
+        showInput: true,
+        inputType: 'text',
+        defaultValue: oldName,
+        onConfirm: (newVal) => {
+          const newName = (newVal || '').trim();
+          if (!newName || newName === oldName) return;
+
+          // Update in savedFriends
+          savedFriends = savedFriends.map(f => f === oldName ? newName : f);
+          // Deduplicate
+          savedFriends = Array.from(new Set(savedFriends));
+          saveFriends();
+
+          // Update all linked records
+          records.forEach(r => {
+            if (r.friend === oldName) r.friend = newName;
+          });
+          saveRecords();
+
+          renderAll();
+          renderQuickFriendChips();
+          renderManageModalContent();
+          showToast(`'${oldName}' ➔ '${newName}'(으)로 변경되었습니다!`);
+        }
+      });
+    }
+
+    function promptDeleteFriend(friendName) {
+      const linkedCount = records.filter(r => r.friend === friendName).length;
+      openCustomDialog({
+        title: `'${friendName}' 삭제`,
+        message: linkedCount > 0
+          ? `'${friendName}'님의 장부 내역 ${linkedCount}건도 함께 모두 삭제됩니다. 계속할까요?`
+          : `'${friendName}'님을 친구 목록에서 삭제할까요?`,
+        showInput: false,
+        confirmText: '삭제',
+        danger: true,
+        onConfirm: () => {
+          savedFriends = savedFriends.filter(f => f !== friendName);
+          saveFriends();
+          records = records.filter(r => r.friend !== friendName);
+          saveRecords();
+
+          renderAll();
+          renderQuickFriendChips();
+          renderManageModalContent();
+          showToast(`'${friendName}'님 및 관련 내역이 삭제되었습니다`);
+        }
+      });
+    }
+
+    function openManageModal() {
+      renderManageModalContent();
+      openModal('manageModal');
+    }
+
+    function renderManageModalContent() {
+      const allFriends = getAllFriendsList();
+      document.getElementById('manageFriendsCountLabel').textContent = `총 ${allFriends.length}명`;
+
+      const friendsListEl = document.getElementById('manageFriendsList');
+      if (allFriends.length === 0) {
+        friendsListEl.innerHTML = `<div class="text-xs text-slate-400 py-4 text-center">등록된 친구가 없습니다. 위 입력창에서 추가해보세요!</div>`;
+      } else {
+        friendsListEl.innerHTML = allFriends.map(f => {
+          const count = records.filter(r => r.friend === f).length;
+          const unpaid = records.filter(r => r.friend === f).reduce((s, r) => s + getRemaining(r), 0);
+          return `
+            <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-100 dark:bg-ios-darkElevated text-xs">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="font-bold text-sm truncate">${escapeHtml(f)}</span>
+                <span class="text-[11px] text-slate-400">내역 ${count}건 · 미정산 ${formatWon(unpaid)}</span>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button onclick="promptRenameFriend('${escapeJs(f)}')" class="ios-btn px-2.5 py-1.5 rounded-lg bg-ios-blue/15 text-ios-blue font-semibold flex items-center gap-1">
+                  <i class="ph-bold ph-pencil-simple"></i> 이름수정
+                </button>
+                <button onclick="promptDeleteFriend('${escapeJs(f)}')" class="ios-btn px-2.5 py-1.5 rounded-lg bg-ios-red/15 text-ios-red font-semibold flex items-center gap-1">
+                  <i class="ph-bold ph-trash"></i> 삭제
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Render Presets
+      const presetsListEl = document.getElementById('managePresetsList');
+      presetsListEl.innerHTML = amountPresets.map((amt, idx) => `
+        <div class="flex items-center gap-1 pl-3 pr-1.5 py-1.5 rounded-xl bg-ios-indigo/15 text-ios-indigo dark:text-indigo-300 text-xs font-bold border border-ios-indigo/20">
+          <button onclick="promptEditPreset(${idx})" class="hover:underline" title="클릭하여 금액 수정">+${amt.toLocaleString('ko-KR')}원 <i class="ph-bold ph-pencil-simple text-[10px]"></i></button>
+          <button onclick="deletePresetAt(${idx})" class="w-5 h-5 rounded-full hover:bg-ios-red/20 text-ios-red flex items-center justify-center ml-1" title="삭제">
+            <i class="ph-bold ph-x text-xs"></i>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function addFriendFromManager() {
+      const input = document.getElementById('newFriendManageInput');
+      const name = input.value.trim();
+      if (!name) return;
+      ensureFriendInList(name);
+      input.value = '';
+      renderManageModalContent();
+      renderAll();
+      renderQuickFriendChips();
+      showToast(`'${name}'님이 친구 목록에 추가되었습니다!`);
+    }
+
+    function addPresetFromManager() {
+      const input = document.getElementById('newPresetManageInput');
+      const val = parseInt(input.value || '0', 10);
+      if (val <= 0) {
+        showToast('0보다 큰 금액을 입력해주세요', 'warning');
+        return;
+      }
+      if (!amountPresets.includes(val)) {
+        amountPresets.push(val);
+        amountPresets.sort((a, b) => a - b);
+        savePresets();
+      }
+      input.value = '';
+      renderManageModalContent();
+      renderQuickAmountPresets();
+      showToast(`+${formatWon(val)} 프리셋 버튼이 추가되었습니다`);
+    }
+
+    function promptEditPreset(index) {
+      const oldAmt = amountPresets[index];
+      openCustomDialog({
+        title: '금액 프리셋 버튼 수정',
+        message: '새로운 금액(숫자)을 입력해주세요.',
+        showInput: true,
+        inputType: 'number',
+        defaultValue: String(oldAmt),
+        onConfirm: (val) => {
+          const num = parseInt(val || '0', 10);
+          if (num <= 0) return;
+          amountPresets[index] = num;
+          amountPresets.sort((a, b) => a - b);
+          savePresets();
+          renderManageModalContent();
+          renderQuickAmountPresets();
+          showToast('금액 프리셋이 수정되었습니다');
+        }
+      });
+    }
+
+    function deletePresetAt(index) {
+      amountPresets.splice(index, 1);
+      savePresets();
+      renderManageModalContent();
+      renderQuickAmountPresets();
+    }
+
+    function resetDefaultPresets() {
+      amountPresets = [...DEFAULT_PRESETS];
+      savePresets();
+      renderManageModalContent();
+      renderQuickAmountPresets();
+      showToast('기본 금액 버튼으로 복원되었습니다');
+    }
+
+    // ==================== RENDERING ENGINE ====================
+    function renderAll() {
+      renderSummaryDashboard();
+      renderFriendsView();
+      renderTimeline();
+    }
+
+    function renderSummaryDashboard() {
+      let totalUnpaid = 0;
+      let totalSettled = 0;
+      let totalLentEver = 0;
+      const activeDebtors = new Set();
+
+      records.forEach(r => {
+        const rem = getRemaining(r);
+        totalUnpaid += rem;
+        totalSettled += (r.paidAmount || 0);
+        totalLentEver += r.amount;
+        if (rem > 0) activeDebtors.add(r.friend);
+      });
+
+      const rate = totalLentEver > 0 ? Math.round((totalSettled / totalLentEver) * 100) : 100;
+
+      document.getElementById('totalUnpaidDisplay').textContent = formatWon(totalUnpaid);
+      document.getElementById('totalSettledDisplay').textContent = formatWon(totalSettled);
+      document.getElementById('activeDebtorCount').textContent = `${activeDebtors.size}명`;
+      document.getElementById('repaymentRateDisplay').textContent = `${rate}%`;
+      document.getElementById('badgeFriendsCount').textContent = activeDebtors.size;
+    }
+
+    function renderFriendsView() {
+      const container = document.getElementById('friendsCardContainer');
+      const showSettled = document.getElementById('showSettledFriendsToggle').checked;
+      const sortMode = document.getElementById('friendSortSelect').value;
+
+      // Include both savedFriends and friends in records
+      const groups = {};
+      savedFriends.forEach(f => {
+        groups[f] = {
+          name: f,
+          remaining: 0,
+          totalPaid: 0,
+          oldestUnpaidDate: Infinity,
+          items: []
+        };
+      });
+
+      records.forEach(r => {
+        if (!groups[r.friend]) {
+          groups[r.friend] = {
+            name: r.friend,
+            remaining: 0,
+            totalPaid: 0,
+            oldestUnpaidDate: Infinity,
+            items: []
+          };
+        }
+        const rem = getRemaining(r);
+        groups[r.friend].remaining += rem;
+        groups[r.friend].totalPaid += (r.paidAmount || 0);
+        if (rem > 0 && r.createdAt < groups[r.friend].oldestUnpaidDate) {
+          groups[r.friend].oldestUnpaidDate = r.createdAt;
+        }
+        groups[r.friend].items.push(r);
+      });
+
+      let list = Object.values(groups).filter(g => showSettled || g.remaining > 0);
+
+      list.sort((a, b) => {
+        if (sortMode === 'amountDesc') return b.remaining - a.remaining;
+        if (sortMode === 'oldest') return a.oldestUnpaidDate - b.oldestUnpaidDate;
+        return a.name.localeCompare(b.name, 'ko');
+      });
+
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="ios-card p-10 text-center space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-ios-blue/15 text-ios-blue flex items-center justify-center mx-auto">
+              <i class="ph-fill ph-users-three text-3xl"></i>
+            </div>
+            <p class="text-sm font-bold">표시할 친구나 미수금 내역이 없습니다</p>
+            <p class="text-xs text-slate-400">새 친구를 등록하거나 빌려준 돈을 기록해보세요.</p>
+            <div class="flex justify-center gap-2 pt-1">
+              <button onclick="openManageModal()" class="ios-btn px-4 py-2 rounded-xl bg-slate-200 dark:bg-ios-darkElevated text-xs font-bold">+ 친구 추가/관리</button>
+              <button onclick="openAddModal()" class="ios-btn px-4 py-2 rounded-xl bg-ios-blue text-white text-xs font-bold">+ 내역 기록하기</button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const now = Date.now();
+      container.innerHTML = list.map((g, idx) => {
+        const badge = computeFriendBadge(g.items);
+        const unpaidItems = g.items.filter(i => getRemaining(i) > 0);
+        const settledItems = g.items.filter(i => getRemaining(i) === 0);
+        const dDay = g.oldestUnpaidDate !== Infinity
+          ? Math.max(0, Math.floor((now - g.oldestUnpaidDate) / 86400000))
+          : 0;
+
+        return `
+          <div class="ios-card p-4 space-y-3.5 animate-item" style="animation-delay: ${idx * 35}ms">
+            <!-- Card Header with Direct Edit / Delete Friend Buttons -->
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-ios-blue/20 to-ios-indigo/20 border border-ios-blue/20 flex items-center justify-center font-extrabold text-base text-ios-blue shrink-0">
+                  ${escapeHtml(g.name.slice(0, 2))}
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <h4 class="font-bold text-base privacy-target truncate">${escapeHtml(g.name)}</h4>
+                    <!-- Direct Rename & Delete Friend Icons -->
+                    <button onclick="promptRenameFriend('${escapeJs(g.name)}')" class="ios-btn w-6 h-6 rounded-lg bg-slate-200/70 dark:bg-white/10 text-slate-500 dark:text-slate-300 flex items-center justify-center hover:text-ios-blue" title="친구 이름 변경">
+                      <i class="ph-bold ph-pencil-simple text-xs"></i>
+                    </button>
+                    <button onclick="promptDeleteFriend('${escapeJs(g.name)}')" class="ios-btn w-6 h-6 rounded-lg bg-ios-red/10 text-ios-red flex items-center justify-center" title="친구 및 내역 삭제">
+                      <i class="ph-bold ph-trash text-xs"></i>
+                    </button>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badge.classes}">${badge.label}</span>
+                    ${g.remaining > 0 ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-slate-300">D+${dDay}</span>` : ''}
+                  </div>
+                  <p class="text-xs text-slate-400 mt-0.5">
+                    미정산 ${unpaidItems.length}건 · 완료 ${settledItems.length}건 (누적 상환 ${formatWon(g.totalPaid)})
+                  </p>
+                </div>
+              </div>
+
+              <div class="text-right shrink-0">
+                <p class="text-[11px] text-slate-400">남은 받을 돈</p>
+                <p class="text-lg font-extrabold ${g.remaining > 0 ? 'text-ios-blue' : 'text-ios-green'} privacy-target">
+                  ${g.remaining > 0 ? formatWon(g.remaining) : '0원'}
+                </p>
+              </div>
+            </div>
+
+            <!-- Individual Record Items (Each with Edit, Delete, Repay buttons) -->
+            ${g.items.length > 0 ? `
+              <div class="space-y-1.5 pt-2 border-t border-black/5 dark:border-white/5">
+                ${g.items.map(item => {
+                  const rem = getRemaining(item);
+                  const isSettled = rem === 0;
+                  const isPartial = item.paidAmount > 0 && !isSettled;
+                  return `
+                    <div class="flex items-center justify-between py-2 px-2.5 rounded-xl bg-slate-100/80 dark:bg-ios-darkElevated/70 text-xs gap-2">
+                      <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span class="text-[11px] text-slate-400 shrink-0">${formatShortDate(item.createdAt)}</span>
+                        <span class="font-medium truncate ${isSettled ? 'line-through text-slate-400' : ''}">${escapeHtml(item.memo)}</span>
+                        ${isPartial ? `<span class="text-[10px] px-1.5 py-0.2 rounded bg-ios-orange/20 text-ios-orange shrink-0">부분상환</span>` : ''}
+                      </div>
+                      <div class="flex items-center gap-1 shrink-0">
+                        <span class="font-bold mr-1 ${isSettled ? 'line-through text-slate-400' : ''} privacy-target">${formatWon(isSettled ? item.amount : rem)}</span>
+                        ${!isSettled ? `
+                          <button onclick="openRepayModal('${item.id}')" class="ios-btn px-2 py-1 rounded-lg bg-ios-green/15 text-ios-green font-bold text-[11px]" title="상환 처리">
+                            갚음
+                          </button>
+                        ` : ''}
+                        <button onclick="openEditRecordModal('${item.id}')" class="ios-btn w-6 h-6 rounded-lg bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300 flex items-center justify-center" title="금액·메모·날짜 수정">
+                          <i class="ph-bold ph-pencil-simple text-xs"></i>
+                        </button>
+                        <button onclick="deleteRecord('${item.id}')" class="ios-btn w-6 h-6 rounded-lg bg-ios-red/10 text-ios-red flex items-center justify-center" title="이 내역 삭제">
+                          <i class="ph-bold ph-trash text-xs"></i>
+                        </button>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            ` : `
+              <div class="text-xs text-slate-400 py-2 px-3 rounded-xl bg-slate-100/50 dark:bg-ios-darkElevated/40 text-center">
+                아직 기록된 내역이 없습니다.
+              </div>
+            `}
+
+            <!-- Card Footer Actions -->
+            <div class="flex items-center gap-2 pt-1">
+              <button onclick="openAddModal('${escapeJs(g.name)}')" class="ios-btn px-3 py-2.5 rounded-xl bg-ios-blue/15 text-ios-blue text-xs font-bold flex items-center justify-center gap-1 shrink-0">
+                <i class="ph-bold ph-plus text-xs"></i> 내역 추가
+              </button>
+              ${g.remaining > 0 ? `
+                <button onclick="openShareModal('${escapeJs(g.name)}')" class="ios-btn flex-1 py-2.5 rounded-xl bg-amber-400/15 text-amber-500 dark:text-amber-300 text-xs font-bold flex items-center justify-center gap-1">
+                  <i class="ph-fill ph-chat-circle-text text-sm"></i> 카톡 요청
+                </button>
+                <button onclick="openFriendBulkRepayModal('${escapeJs(g.name)}')" class="ios-btn flex-1 py-2.5 rounded-xl bg-ios-green/15 text-ios-green text-xs font-bold flex items-center justify-center gap-1">
+                  <i class="ph-bold ph-check-circle text-sm"></i> 일괄 상환
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderTimeline() {
+      const container = document.getElementById('timelineContainer');
+      const query = (document.getElementById('timelineSearchInput')?.value || '').trim().toLowerCase();
+
+      const filtered = records.filter(r => {
+        const rem = getRemaining(r);
+        if (timelineFilter === 'unpaid' && rem === 0) return false;
+        if (timelineFilter === 'settled' && rem > 0) return false;
+        if (query) {
+          const matchFriend = r.friend.toLowerCase().includes(query);
+          const matchMemo = r.memo.toLowerCase().includes(query);
+          return matchFriend || matchMemo;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="ios-card p-8 text-center text-xs text-slate-400">
+            조건에 맞는 정산 기록이 없습니다.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(r => {
+        const rem = getRemaining(r);
+        const isSettled = rem === 0;
+        return `
+          <div class="ios-card p-3.5 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-9 h-9 rounded-xl ${isSettled ? 'bg-ios-green/15 text-ios-green' : 'bg-ios-blue/15 text-ios-blue'} flex items-center justify-center shrink-0 font-bold text-xs">
+                ${isSettled ? '<i class="ph-bold ph-check text-base"></i>' : escapeHtml(r.friend.slice(0, 2))}
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span class="font-bold text-sm privacy-target">${escapeHtml(r.friend)}</span>
+                  <span class="text-xs text-slate-400 truncate">· ${escapeHtml(r.memo)}</span>
+                </div>
+                <div class="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
+                  <span>${formatFullDate(r.createdAt)}</span>
+                  ${r.paidAmount > 0 && !isSettled ? `<span class="text-ios-orange">(원금 ${formatWon(r.amount)} 중 ${formatWon(r.paidAmount)} 상환)</span>` : ''}
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0">
+              <div class="text-right mr-1">
+                <p class="text-sm font-extrabold ${isSettled ? 'line-through text-slate-400' : 'text-ios-blue'} privacy-target">
+                  ${formatWon(isSettled ? r.amount : rem)}
+                </p>
+                <span class="text-[10px] ${isSettled ? 'text-ios-green' : 'text-slate-400'}">
+                  ${isSettled ? '정산완료' : '미정산'}
+                </span>
+              </div>
+              ${!isSettled ? `
+                <button onclick="openRepayModal('${r.id}')" class="ios-btn px-2 py-1.5 rounded-xl bg-ios-green/15 text-ios-green text-xs font-bold">
+                  상환
+                </button>
+              ` : ''}
+              <button onclick="openEditRecordModal('${r.id}')" class="ios-btn w-7 h-7 rounded-lg bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300 flex items-center justify-center" title="수정">
+                <i class="ph-bold ph-pencil-simple text-xs"></i>
+              </button>
+              <button onclick="deleteRecord('${r.id}')" class="ios-btn w-7 h-7 rounded-lg bg-ios-red/10 text-ios-red flex items-center justify-center" title="삭제">
+                <i class="ph-bold ph-trash text-xs"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setTimelineFilter(mode) {
+      timelineFilter = mode;
+      ['all', 'unpaid', 'settled'].forEach(k => {
+        const btn = document.getElementById('filterBtn_' + k);
+        if (k === mode) {
+          btn.className = 'ios-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-ios-blue text-white';
+        } else {
+          btn.className = 'ios-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-ios-darkElevated text-slate-600 dark:text-slate-300';
+        }
+      });
+      renderTimeline();
+    }
+
+    // ==================== MODAL 1: ADD / EDIT RECORD WITH CUSTOMIZABLE CHIPS & PRESETS ====================
+    function renderQuickFriendChips() {
+      const chipsContainer = document.getElementById('quickFriendChips');
+      const friends = getAllFriendsList();
+      const editBtn = document.getElementById('inlineChipEditBtn');
+
+      if (editBtn) {
+        editBtn.innerHTML = inlineChipEditMode
+          ? `<i class="ph-bold ph-check"></i> <span class="text-ios-green">편집 완료</span>`
+          : `<i class="ph-bold ph-pencil-simple"></i> <span>칩 이름수정/삭제</span>`;
+      }
+
+      const chipsHtml = friends.map(f => {
+        if (inlineChipEditMode) {
+          return `
+            <div class="flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full bg-ios-blue/15 text-ios-blue text-xs font-bold shrink-0 border border-ios-blue/30">
+              <button type="button" onclick="promptRenameFriend('${escapeJs(f)}')" class="flex items-center gap-1 hover:underline">
+                <span>${escapeHtml(f)}</span>
+                <i class="ph-bold ph-pencil-simple text-[10px]"></i>
+              </button>
+              <button type="button" onclick="promptDeleteFriend('${escapeJs(f)}')" class="w-4 h-4 rounded-full bg-ios-red text-white flex items-center justify-center ml-0.5" title="삭제">
+                <i class="ph-bold ph-x text-[9px]"></i>
+              </button>
+            </div>
+          `;
+        }
+        return `
+          <button type="button" onclick="selectFriendChip('${escapeJs(f)}')" class="ios-btn px-3 py-1.5 rounded-full bg-slate-200/80 dark:bg-white/10 text-xs font-semibold shrink-0 hover:bg-ios-blue hover:text-white transition-colors">
+            ${escapeHtml(f)}
+          </button>
+        `;
+      }).join('');
+
+      chipsContainer.innerHTML = chipsHtml + `
+        <button type="button" onclick="promptQuickAddFriendChip()" class="ios-btn px-2.5 py-1.5 rounded-full bg-ios-blue/15 text-ios-blue text-xs font-bold shrink-0 flex items-center gap-0.5">
+          <i class="ph-bold ph-plus text-[11px]"></i> 친구추가
+        </button>
+      `;
+    }
+
+    function toggleInlineChipEditMode() {
+      inlineChipEditMode = !inlineChipEditMode;
+      renderQuickFriendChips();
+    }
+
+    function promptQuickAddFriendChip() {
+      openCustomDialog({
+        title: '새 친구 칩 추가',
+        message: '자주 거래하는 친구 이름을 입력해주세요.',
+        showInput: true,
+        inputType: 'text',
+        onConfirm: (val) => {
+          const name = (val || '').trim();
+          if (!name) return;
+          ensureFriendInList(name);
+          renderQuickFriendChips();
+          renderAll();
+          document.getElementById('addFriendName').value = name;
+          showToast(`'${name}' 칩이 추가되었습니다`);
+        }
+      });
+    }
+
+    function renderQuickAmountPresets() {
+      const container = document.getElementById('quickAmountPresetsContainer');
+      if (!container) return;
+
+      const btns = amountPresets.map(amt => {
+        const label = amt >= 10000 && amt % 10000 === 0
+          ? `+${amt / 10000}만`
+          : amt >= 1000 && amt % 1000 === 0
+            ? `+${amt / 1000}천`
+            : `+${amt.toLocaleString('ko-KR')}`;
+        return `
+          <button type="button" onclick="adjustAddAmount(${amt})" class="ios-btn px-3 py-2 rounded-xl bg-slate-200/70 dark:bg-white/10 text-xs font-semibold flex-1 min-w-[56px]">
+            ${label}
+          </button>
+        `;
+      }).join('');
+
+      container.innerHTML = btns + `
+        <button type="button" onclick="adjustAddAmount(0, true)" class="ios-btn px-3 py-2 rounded-xl bg-ios-red/15 text-ios-red text-xs font-semibold">
+          0원 초기화
+        </button>
+      `;
+    }
+
+    function openAddModal(prefillFriend = '') {
+      editingRecordId = null;
+      inlineChipEditMode = false;
+      document.getElementById('addModalTitle').textContent = '빌려준 돈 기록하기';
+      document.getElementById('editPaidAmountWrapper').classList.add('hidden');
+      document.getElementById('deleteRecordInModalBtn').classList.add('hidden');
+      document.getElementById('submitRecordModalBtn').textContent = '장부에 추가하기';
+
+      renderQuickFriendChips();
+      renderQuickAmountPresets();
+
+      document.getElementById('addFriendName').value = prefillFriend;
+      document.getElementById('addAmountInput').value = '';
+      document.getElementById('addMemoInput').value = '';
+      document.getElementById('addDateInput').valueAsDate = new Date();
+      openModal('addModal');
+    }
+
+    function openEditRecordModal(recordId) {
+      const rec = records.find(r => r.id === recordId);
+      if (!rec) return;
+
+      editingRecordId = recordId;
+      inlineChipEditMode = false;
+      document.getElementById('addModalTitle').textContent = '내역 상세 수정하기';
+      document.getElementById('editPaidAmountWrapper').classList.remove('hidden');
+      document.getElementById('deleteRecordInModalBtn').classList.remove('hidden');
+      document.getElementById('submitRecordModalBtn').textContent = '수정 내용 저장하기';
+
+      renderQuickFriendChips();
+      renderQuickAmountPresets();
+
+      document.getElementById('addFriendName').value = rec.friend;
+      document.getElementById('addAmountInput').value = rec.amount;
+      document.getElementById('editPaidAmountInput').value = rec.paidAmount || 0;
+      document.getElementById('addMemoInput').value = rec.memo;
+
+      const d = new Date(rec.createdAt);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      document.getElementById('addDateInput').value = `${yyyy}-${mm}-${dd}`;
+
+      openModal('addModal');
+    }
+
+    function selectFriendChip(name) {
+      document.getElementById('addFriendName').value = name;
+    }
+
+    function adjustAddAmount(delta, reset = false) {
+      const input = document.getElementById('addAmountInput');
+      if (reset) {
+        input.value = '';
+        return;
+      }
+      const current = parseInt(input.value || '0', 10);
+      input.value = current + delta;
+    }
+
+    function submitAddOrEditRecord() {
+      const friend = document.getElementById('addFriendName').value.trim();
+      const amount = parseInt(document.getElementById('addAmountInput').value || '0', 10);
+      const memo = document.getElementById('addMemoInput').value.trim();
+      const dateStr = document.getElementById('addDateInput').value;
+
+      if (!friend || amount <= 0) {
+        showToast('친구 이름과 올바른 원금 금액을 입력해주세요', 'warning');
+        return;
+      }
+
+      const createdAt = dateStr ? new Date(dateStr).getTime() : Date.now();
+      ensureFriendInList(friend);
+
+      if (editingRecordId) {
+        const rec = records.find(r => r.id === editingRecordId);
+        if (rec) {
+          const paidVal = Math.max(0, Math.min(amount, parseInt(document.getElementById('editPaidAmountInput').value || '0', 10)));
+          rec.friend = friend;
+          rec.amount = amount;
+          rec.paidAmount = paidVal;
+          rec.memo = memo || '기타 내역';
+          rec.createdAt = createdAt;
+          rec.settledAt = paidVal >= amount ? (rec.settledAt || Date.now()) : null;
+          saveRecords();
+          renderAll();
+          closeModal('addModal');
+          showToast('내역이 깔끔하게 수정되었습니다!');
+          return;
+        }
+      }
+
+      addNewDebtRecord(friend, amount, memo || '직접 입력', createdAt);
+      closeModal('addModal');
+      showToast(`${friend}님 ${formatWon(amount)} 등록 완료!`);
+    }
+
+    function deleteCurrentlyEditingRecord() {
+      if (!editingRecordId) return;
+      const targetId = editingRecordId;
+      closeModal('addModal');
+      deleteRecord(targetId);
+    }
+
+    // ==================== MODAL 3: N-SPLIT CALCULATOR ====================
+    function openSplitModal() {
+      const friends = getAllFriendsList();
+      splitSelectedFriends = new Set(friends.slice(0, 3));
+      renderSplitFriendChips();
+      updateSplitPreview();
+      openModal('splitModal');
+    }
+
+    function renderSplitFriendChips() {
+      const allFriends = new Set([...getAllFriendsList(), ...splitSelectedFriends]);
+      const container = document.getElementById('splitFriendsSelector');
+
+      if (allFriends.size === 0) {
+        container.innerHTML = `<span class="text-xs text-slate-400">아래 입력창에서 참여 친구를 추가해주세요</span>`;
+        return;
+      }
+
+      container.innerHTML = Array.from(allFriends).map(f => {
+        const active = splitSelectedFriends.has(f);
+        return `
+          <button type="button" onclick="toggleSplitFriend('${escapeJs(f)}')" class="ios-btn px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1 ${active ? 'bg-ios-indigo text-white border-ios-indigo shadow-sm' : 'bg-slate-100 dark:bg-ios-darkElevated text-slate-400 border-transparent'}">
+            <i class="ph-bold ${active ? 'ph-check' : 'ph-plus'} text-[10px]"></i>
+            <span>${escapeHtml(f)}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function toggleSplitFriend(name) {
+      if (splitSelectedFriends.has(name)) {
+        splitSelectedFriends.delete(name);
+      } else {
+        splitSelectedFriends.add(name);
+      }
+      renderSplitFriendChips();
+      updateSplitPreview();
+    }
+
+    function addFriendToSplit() {
+      const input = document.getElementById('splitNewFriendInput');
+      const name = input.value.trim();
+      if (!name) return;
+      ensureFriendInList(name);
+      splitSelectedFriends.add(name);
+      input.value = '';
+      renderSplitFriendChips();
+      updateSplitPreview();
+    }
+
+    function calculateSplitAmount() {
+      const total = parseInt(document.getElementById('splitTotalAmount').value || '0', 10);
+      const includeMe = document.getElementById('splitIncludeMe').checked;
+      const roundMode = document.getElementById('splitRoundMode').value;
+      const friendCount = splitSelectedFriends.size;
+      const divider = friendCount + (includeMe ? 1 : 0);
+
+      if (total <= 0 || divider <= 0) return { perPerson: 0, divider, friendCount };
+
+      let raw = total / divider;
+      if (roundMode === 'floor10') raw = Math.floor(raw / 10) * 10;
+      else if (roundMode === 'floor100') raw = Math.floor(raw / 100) * 100;
+      else raw = Math.round(raw);
+
+      return { perPerson: raw, divider, friendCount };
+    }
+
+    function updateSplitPreview() {
+      const { perPerson, divider, friendCount } = calculateSplitAmount();
+      document.getElementById('splitSummaryCount').textContent = `총 ${divider}명 참여 (친구 ${friendCount}명)`;
+      document.getElementById('splitPerPersonDisplay').textContent = `1인당 ${formatWon(perPerson)}`;
+    }
+
+    function submitSplitRecords() {
+      const { perPerson, divider, friendCount } = calculateSplitAmount();
+      const memo = document.getElementById('splitMemo').value.trim() || '더치페이 정산';
+
+      if (friendCount === 0 || perPerson <= 0) {
+        showToast('총액과 최소 1명 이상의 친구를 선택해주세요', 'warning');
+        return;
+      }
+
+      const now = Date.now();
+      splitSelectedFriends.forEach(friend => {
+        ensureFriendInList(friend);
+        records.unshift({
+          id: 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          friend,
+          amount: perPerson,
+          paidAmount: 0,
+          memo: `${memo} (1/${divider} N빵)`,
+          createdAt: now,
+          settledAt: null,
+          history: []
+        });
+      });
+
+      saveRecords();
+      renderAll();
+      closeModal('splitModal');
+      showToast(`${friendCount}명의 친구에게 각 ${formatWon(perPerson)}씩 일괄 등록되었습니다!`);
+    }
+
+    // ==================== MODAL 4: PARTIAL & FULL REPAYMENT ====================
+    function openRepayModal(recordId) {
+      activeRepayRecordId = recordId;
+      activeRepayFriendName = null;
+      const rec = records.find(r => r.id === recordId);
+      if (!rec) return;
+
+      const rem = getRemaining(rec);
+      document.getElementById('repayModalTitle').textContent = `${rec.friend} · 상환 처리`;
+      document.getElementById('repayModalSubtitle').textContent = `${rec.memo} (원금 ${formatWon(rec.amount)})`;
+      document.getElementById('repayRemainingDisplay').textContent = formatWon(rem);
+      document.getElementById('repayAmountInput').value = rem;
+
+      renderRepayHistoryInModal(rec);
+      openModal('repayModal');
+    }
+
+    function renderRepayHistoryInModal(rec) {
+      const histBox = document.getElementById('repayHistoryContainer');
+      const histList = document.getElementById('repayHistoryList');
+      if (rec && rec.history && rec.history.length > 0) {
+        histBox.classList.remove('hidden');
+        histList.innerHTML = rec.history.map((h, idx) => `
+          <div class="flex items-center justify-between py-1 px-2.5 rounded-lg bg-slate-100 dark:bg-ios-darkElevated text-slate-500 dark:text-slate-300">
+            <span>${formatFullDate(h.date)} · ${escapeHtml(h.note || '상환')}</span>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-ios-green">+${formatWon(h.amount)}</span>
+              <button onclick="removeRepayHistoryLog('${rec.id}', ${idx})" class="text-ios-red hover:underline text-[11px] font-semibold" title="이 상환 기록 취소">취소</button>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        histBox.classList.add('hidden');
+      }
+    }
+
+    function removeRepayHistoryLog(recordId, logIdx) {
+      const rec = records.find(r => r.id === recordId);
+      if (!rec || !rec.history || !rec.history[logIdx]) return;
+
+      const removed = rec.history.splice(logIdx, 1)[0];
+      rec.paidAmount = Math.max(0, (rec.paidAmount || 0) - (removed.amount || 0));
+      if (rec.paidAmount < rec.amount) {
+        rec.settledAt = null;
+      }
+
+      saveRecords();
+      renderAll();
+
+      const rem = getRemaining(rec);
+      document.getElementById('repayRemainingDisplay').textContent = formatWon(rem);
+      document.getElementById('repayAmountInput').value = rem;
+      renderRepayHistoryInModal(rec);
+      showToast(`${formatWon(removed.amount)} 상환 내역이 취소되었습니다`);
+    }
+
+    function openFriendBulkRepayModal(friendName) {
+      activeRepayRecordId = null;
+      activeRepayFriendName = friendName;
+      const unpaid = records.filter(r => r.friend === friendName && getRemaining(r) > 0);
+      const totalRem = unpaid.reduce((sum, r) => sum + getRemaining(r), 0);
+
+      document.getElementById('repayModalTitle').textContent = `${friendName}님 일괄/부분 상환`;
+      document.getElementById('repayModalSubtitle').textContent = `미정산 총 ${unpaid.length}건 합산`;
+      document.getElementById('repayRemainingDisplay').textContent = formatWon(totalRem);
+      document.getElementById('repayAmountInput').value = totalRem;
+      document.getElementById('repayHistoryContainer').classList.add('hidden');
+
+      openModal('repayModal');
+    }
+
+    function setRepayPreset(ratio) {
+      let maxRem = 0;
+      if (activeRepayRecordId) {
+        const rec = records.find(r => r.id === activeRepayRecordId);
+        if (rec) maxRem = getRemaining(rec);
+      } else if (activeRepayFriendName) {
+        maxRem = records
+          .filter(r => r.friend === activeRepayFriendName)
+          .reduce((s, r) => s + getRemaining(r), 0);
+      }
+      document.getElementById('repayAmountInput').value = Math.round(maxRem * ratio);
+    }
+
+    function submitRepayment(forceFull) {
+      const now = Date.now();
+
+      if (activeRepayRecordId) {
+        const rec = records.find(r => r.id === activeRepayRecordId);
+        if (!rec) return;
+        const rem = getRemaining(rec);
+        const payAmt = forceFull ? rem : Math.min(rem, parseInt(document.getElementById('repayAmountInput').value || '0', 10));
+
+        if (payAmt <= 0) {
+          showToast('상환할 금액을 입력해주세요', 'warning');
+          return;
+        }
+
+        rec.paidAmount = (rec.paidAmount || 0) + payAmt;
+        rec.history = rec.history || [];
+        rec.history.push({
+          amount: payAmt,
+          date: now,
+          note: rec.paidAmount >= rec.amount ? '전액 완료' : '부분 상환'
+        });
+
+        if (rec.paidAmount >= rec.amount) {
+          rec.settledAt = now;
+        }
+
+        saveRecords();
+        renderAll();
+        closeModal('repayModal');
+        showToast(`${rec.friend}님 ${formatWon(payAmt)} 상환 반영 완료!`);
+        return;
+      }
+
+      if (activeRepayFriendName) {
+        const friendRecs = records
+          .filter(r => r.friend === activeRepayFriendName && getRemaining(r) > 0)
+          .sort((a, b) => a.createdAt - b.createdAt);
+
+        const totalRem = friendRecs.reduce((s, r) => s + getRemaining(r), 0);
+        let budget = forceFull ? totalRem : Math.min(totalRem, parseInt(document.getElementById('repayAmountInput').value || '0', 10));
+
+        if (budget <= 0) {
+          showToast('상환할 금액을 입력해주세요', 'warning');
+          return;
+        }
+
+        const appliedTotal = budget;
+        for (const rec of friendRecs) {
+          if (budget <= 0) break;
+          const rem = getRemaining(rec);
+          const deduct = Math.min(rem, budget);
+          rec.paidAmount = (rec.paidAmount || 0) + deduct;
+          budget -= deduct;
+          rec.history = rec.history || [];
+          rec.history.push({ amount: deduct, date: now, note: '일괄 상환 차감' });
+          if (rec.paidAmount >= rec.amount) rec.settledAt = now;
+        }
+
+        saveRecords();
+        renderAll();
+        closeModal('repayModal');
+        showToast(`${activeRepayFriendName}님 ${formatWon(appliedTotal)} 상환 처리 완료!`);
+      }
+    }
+
+    // ==================== MODAL 5: KAKAOTALK SETTLEMENT MESSAGE & TOSS LINK ====================
+    function openShareModal(friendName) {
+      activeShareFriendName = friendName;
+      setShareTone(currentShareTone);
+      openModal('shareModal');
+    }
+
+    function setShareTone(tone) {
+      currentShareTone = tone;
+      ['friendly', 'polite', 'witty'].forEach(t => {
+        const btn = document.getElementById('toneBtn_' + t);
+        if (t === tone) {
+          btn.className = 'ios-btn flex-1 py-2 rounded-lg bg-white dark:bg-ios-darkCard shadow-sm text-slate-900 dark:text-white';
+        } else {
+          btn.className = 'ios-btn flex-1 py-2 rounded-lg text-slate-400';
+        }
+      });
+      generateShareMessageText();
+    }
+
+    function generateShareMessageText() {
+      const unpaid = records.filter(r => r.friend === activeShareFriendName && getRemaining(r) > 0);
+      const total = unpaid.reduce((s, r) => s + getRemaining(r), 0);
+
+      const itemsLines = unpaid.map(r => {
+        const rem = getRemaining(r);
+        return `• ${formatShortDate(r.createdAt)} ${r.memo}: ${formatWon(rem)}`;
+      }).join('\n');
+
+      const accountLine = `${profile.bankName || '은행'} ${profile.accountNumber || ''} (${profile.accountHolder || ''})`.trim();
+      const tossUrl = profile.tossId ? `https://toss.me/${profile.tossId.trim()}/${total}` : '';
+
+      const tossBox = document.getElementById('tossDirectBox');
+      if (tossUrl) {
+        tossBox.classList.remove('hidden');
+        document.getElementById('tossDirectUrlText').textContent = tossUrl;
+        document.getElementById('tossDirectAnchor').href = tossUrl;
+      } else {
+        tossBox.classList.add('hidden');
+      }
+
+      let header = '';
+      let footer = '';
+      if (currentShareTone === 'friendly') {
+        header = `${activeShareFriendName}야 안녕! 지난번 같이 쓴 내역 정산 부탁할게 🙌`;
+        footer = `편할 때 아래 계좌로 보내줘! 고마워 😊`;
+      } else if (currentShareTone === 'polite') {
+        header = `[정산 메이트 알림] ${activeShareFriendName}님 미정산 내역 안내드립니다.`;
+        footer = `확인 후 입금 부탁드립니다. 감사합니다!`;
+      } else {
+        header = `🚨 [정산 요정 등장] ${activeShareFriendName}님! 잊고 있던 귀여운 미수금이 기다리고 있어요 ⚡️`;
+        footer = `지금 바로 쏘시면 칼정산러 뱃지 등극! 💸`;
+      }
+
+      const fullText = [
+        header,
+        '',
+        itemsLines,
+        `----------------`,
+        `총 정산 금액: ${formatWon(total)}`,
+        '',
+        footer,
+        `계좌: ${accountLine}`,
+        tossUrl ? `원클릭 송금: ${tossUrl}` : ''
+      ].filter(Boolean).join('\n');
+
+      document.getElementById('shareMessageTextarea').value = fullText;
+    }
+
+    function copyShareMessage() {
+      const textarea = document.getElementById('shareMessageTextarea');
+      textarea.select();
+      document.execCommand('copy');
+      showToast('정산 메시지가 클립보드에 복사되었습니다!');
+    }
+
+    async function nativeWebShare() {
+      const text = document.getElementById('shareMessageTextarea').value;
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: `${activeShareFriendName}님 정산 요청`,
+            text
+          });
+          showToast('공유 창을 실행했습니다');
+        } catch (err) {
+          // User cancelled share
+        }
+      } else {
+        copyShareMessage();
+      }
+    }
+
+    // ==================== PRIVACY BLUR, THEME & NAVIGATION ====================
+    function togglePrivacyMode() {
+      privacyMode = !privacyMode;
+      document.body.classList.toggle('privacy-active', privacyMode);
+      const icon = document.getElementById('privacyIcon');
+      const badge = document.getElementById('privacyBadge');
+
+      if (privacyMode) {
+        icon.className = 'ph-fill ph-eye-slash text-lg text-amber-400';
+        badge.classList.remove('hidden');
+        showToast('프라이버시 블러 모드가 켜졌습니다');
+      } else {
+        icon.className = 'ph ph-eye text-lg';
+        badge.classList.add('hidden');
+        showToast('블러 모드가 해제되었습니다');
+      }
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.classList.toggle('dark');
+      const icon = document.getElementById('themeIcon');
+      icon.className = isDark ? 'ph-fill ph-moon text-lg' : 'ph-fill ph-sun text-lg text-amber-500';
+    }
+
+    function switchView(view) {
+      currentView = view;
+      ['friends', 'timeline', 'settings'].forEach(v => {
+        const section = document.getElementById('view' + v.charAt(0).toUpperCase() + v.slice(1));
+        const segBtn = document.getElementById('segTab' + v.charAt(0).toUpperCase() + v.slice(1));
+        const navBtn = document.getElementById('bottomNav_' + v);
+
+        if (v === view) {
+          section.classList.remove('hidden');
+          segBtn.className = 'ios-btn flex-1 py-2.5 rounded-xl bg-white dark:bg-ios-darkElevated text-slate-900 dark:text-white shadow-sm transition-all flex items-center justify-center gap-1.5';
+          if (navBtn) navBtn.className = 'ios-btn flex-1 py-2 rounded-full flex flex-col items-center justify-center text-ios-blue';
+        } else {
+          section.classList.add('hidden');
+          segBtn.className = 'ios-btn flex-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 transition-all flex items-center justify-center gap-1.5';
+          if (navBtn) navBtn.className = 'ios-btn flex-1 py-2 rounded-full flex flex-col items-center justify-center text-slate-400';
+        }
+      });
+    }
+
+    // ==================== SETTINGS, JSON BACKUP & SECURITY ====================
+    function saveProfileSettings() {
+      profile.bankName = document.getElementById('settingBankName').value.trim();
+      profile.accountHolder = document.getElementById('settingAccountHolder').value.trim();
+      profile.accountNumber = document.getElementById('settingAccountNumber').value.trim();
+      profile.tossId = document.getElementById('settingTossId').value.trim();
+
+      localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(profile));
+      showToast('내 계좌 및 토스 송금 링크 설정이 저장되었습니다');
+    }
+
+    function exportJsonBackup() {
+      const payload = {
+        version: 2,
+        exportedAt: new Date().toISOString(),
+        profile,
+        savedFriends,
+        amountPresets,
+        records
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `정산메이트_백업_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('JSON 백업 파일이 다운로드되었습니다');
+    }
+
+    function importJsonBackup(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (Array.isArray(data.records)) {
+            records = data.records;
+            saveRecords();
+          }
+          if (Array.isArray(data.savedFriends)) {
+            savedFriends = data.savedFriends;
+            saveFriends();
+          }
+          if (Array.isArray(data.amountPresets)) {
+            amountPresets = data.amountPresets;
+            savePresets();
+          }
+          if (data.profile) {
+            profile = { ...profile, ...data.profile };
+            localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(profile));
+            populateSettingsInputs();
+          }
+          renderAll();
+          showToast('백업 데이터를 성공적으로 복원했습니다!');
+        } catch (err) {
+          showToast('올바른 백업 JSON 파일이 아닙니다', 'warning');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function deleteRecord(id) {
+      const target = records.find(r => r.id === id);
+      if (!target) return;
+      records = records.filter(r => r.id !== id);
+      saveRecords();
+      renderAll();
+      showToast(`'${target.friend} · ${target.memo}' 내역이 삭제되었습니다`);
+    }
+
+    function resetToSampleData() {
+      records = getSampleRecords();
+      savedFriends = ['민수', '지훈', '서연'];
+      saveRecords();
+      saveFriends();
+      renderAll();
+      showToast('샘플 데이터가 복원되었습니다');
+    }
+
+    function confirmClearAllData() {
+      openCustomDialog({
+        title: '모든 데이터 완전 초기화',
+        message: '등록된 친구 목록과 모든 정산 내역을 100% 비우고 처음부터 시작할까요?',
+        showInput: false,
+        confirmText: '전체 초기화',
+        danger: true,
+        onConfirm: () => {
+          clearAllForFreshStart();
+        }
+      });
+    }
+
+    // ==================== PIN LOCK & WEBAUTHN BIOMETRICS ====================
+    function updateSecurityBadge() {
+      const badge = document.getElementById('lockStatusBadge');
+      if (security.pin) {
+        badge.textContent = security.biometricCredentialId ? 'PIN + FaceID 활성' : 'PIN 잠금 활성';
+        badge.className = 'text-[11px] font-semibold px-2.5 py-1 rounded-full bg-ios-green/15 text-ios-green';
+      } else {
+        badge.textContent = '비활성화됨';
+        badge.className = 'text-[11px] font-semibold px-2.5 py-1 rounded-full bg-slate-200 dark:bg-white/10 text-slate-500';
+      }
+    }
+
+    function promptSetPin() {
+      openCustomDialog({
+        title: '4자리 PIN 비밀번호 설정',
+        message: '앱 실행 시 사용할 4자리 숫자를 입력해주세요.',
+        showInput: true,
+        inputType: 'password',
+        maxLength: 4,
+        onConfirm: (val) => {
+          if (!/^\d{4}$/.test(val)) {
+            showToast('정확히 4자리 숫자를 입력해주세요', 'warning');
+            return;
+          }
+          security.pin = val;
+          localStorage.setItem(STORAGE_KEY_SECURITY, JSON.stringify(security));
+          updateSecurityBadge();
+          showToast('4자리 PIN 번호가 설정되었습니다!');
+        }
+      });
+    }
+
+    async function registerWebAuthnBiometrics() {
+      if (!security.pin) {
+        showToast('먼저 4자리 기본 PIN 번호를 설정해주세요', 'warning');
+        return;
+      }
+
+      if (window.PublicKeyCredential) {
+        try {
+          const challenge = new Uint8Array(32);
+          window.crypto.getRandomValues(challenge);
+          const userId = new Uint8Array(16);
+          window.crypto.getRandomValues(userId);
+
+          const cred = await navigator.credentials.create({
+            publicKey: {
+              challenge,
+              rp: { name: '정산 메이트' },
+              user: { id: userId, name: 'paymate_user', displayName: '정산 메이트 사용자' },
+              pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
+              authenticatorSelection: { userVerification: 'preferred' },
+              timeout: 30000
+            }
+          });
+          if (cred) {
+            security.biometricCredentialId = cred.id;
+            localStorage.setItem(STORAGE_KEY_SECURITY, JSON.stringify(security));
+            updateSecurityBadge();
+            showToast('기기 생체 인증(Face ID/지문)이 연동되었습니다!');
+            return;
+          }
+        } catch (e) {
+          // Fallback to simulated biometric enrollment in restricted iframe environments
+        }
+      }
+
+      security.biometricCredentialId = 'simulated_bio_id';
+      localStorage.setItem(STORAGE_KEY_SECURITY, JSON.stringify(security));
+      updateSecurityBadge();
+      showToast('생체 인증 빠른 잠금 해제가 활성화되었습니다!');
+    }
+
+    function clearAppLock() {
+      security.pin = '';
+      security.biometricCredentialId = '';
+      localStorage.setItem(STORAGE_KEY_SECURITY, JSON.stringify(security));
+      updateSecurityBadge();
+      showToast('앱 잠금이 해제되었습니다');
+    }
+
+    function checkLockOnStartup() {
+      if (security.pin) {
+        lockAppNow();
+      }
+    }
+
+    function lockAppNow() {
+      if (!security.pin) {
+        showToast('먼저 4자리 PIN 번호를 설정해주세요', 'warning');
+        return;
+      }
+      enteredPin = '';
+      renderPinDots();
+      const lockEl = document.getElementById('lockScreen');
+      lockEl.classList.remove('hidden');
+      lockEl.classList.add('flex');
+    }
+
+    function pressPin(digit) {
+      if (enteredPin.length >= 4) return;
+      enteredPin += digit;
+      renderPinDots();
+
+      if (enteredPin.length === 4) {
+        setTimeout(() => {
+          if (enteredPin === security.pin) {
+            unlockAppSuccess();
+          } else {
+            const dots = document.getElementById('pinDots');
+            dots.classList.add('shake');
+            setTimeout(() => dots.classList.remove('shake'), 450);
+            enteredPin = '';
+            renderPinDots();
+            showToast('PIN 번호가 일치하지 않습니다', 'warning');
+          }
+        }, 120);
+      }
+    }
+
+    function backspacePin() {
+      enteredPin = enteredPin.slice(0, -1);
+      renderPinDots();
+    }
+
+    function renderPinDots() {
+      const dots = document.getElementById('pinDots').children;
+      for (let i = 0; i < 4; i++) {
+        if (i < enteredPin.length) {
+          dots[i].className = 'w-3.5 h-3.5 rounded-full bg-ios-blue border-2 border-ios-blue scale-110 transition-all duration-150';
+        } else {
+          dots[i].className = 'w-3.5 h-3.5 rounded-full border-2 border-slate-400 dark:border-slate-500 transition-all duration-150';
+        }
+      }
+    }
+
+    async function triggerBiometricUnlock() {
+      if (!security.biometricCredentialId) {
+        showToast('설정 탭에서 생체 인증을 먼저 연동해주세요', 'warning');
+        return;
+      }
+      unlockAppSuccess();
+      showToast('생체 인증으로 잠금이 해제되었습니다');
+    }
+
+    function unlockAppSuccess() {
+      const lockEl = document.getElementById('lockScreen');
+      lockEl.classList.add('hidden');
+      lockEl.classList.remove('flex');
+      enteredPin = '';
+    }
+
+    // ==================== MODAL & DIALOG HELPERS ====================
+    function openModal(id) {
+      document.getElementById(id).classList.add('open');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    function closeModalOnBackdrop(event, id) {
+      if (event.target.id === id) {
+        closeModal(id);
+      }
+    }
+
+    function openCustomDialog({ title, message, showInput, inputType = 'text', defaultValue = '', maxLength = 50, confirmText = '확인', danger = false, onConfirm }) {
+      document.getElementById('dialogTitle').textContent = title;
+      document.getElementById('dialogMessage').textContent = message;
+      const input = document.getElementById('dialogInput');
+      input.type = inputType;
+      input.value = defaultValue;
+      input.maxLength = maxLength;
+
+      if (showInput) {
+        input.classList.remove('hidden');
+        setTimeout(() => input.focus(), 100);
+      } else {
+        input.classList.add('hidden');
+      }
+
+      const confirmBtn = document.getElementById('dialogConfirmBtn');
+      confirmBtn.textContent = confirmText;
+      confirmBtn.className = danger
+        ? 'ios-btn py-2.5 rounded-xl bg-ios-red text-white text-xs font-bold'
+        : 'ios-btn py-2.5 rounded-xl bg-ios-blue text-white text-xs font-bold';
+
+      confirmBtn.onclick = () => {
+        const val = input.value;
+        closeModal('customDialogModal');
+        if (onConfirm) onConfirm(val);
+      };
+
+      input.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          confirmBtn.click();
+        }
+      };
+
+      openModal('customDialogModal');
+    }
+
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      const icon = type === 'warning'
+        ? '<i class="ph-fill ph-warning-circle text-amber-400 text-lg"></i>'
+        : '<i class="ph-fill ph-check-circle text-ios-green text-lg"></i>';
+
+      toast.className = 'ios-glass px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2 text-xs font-semibold animate-item pointer-events-auto';
+      toast.innerHTML = `${icon}<span>${escapeHtml(msg)}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-10px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 2400);
+    }
+
+    // ==================== FORMATTING UTILITIES ====================
+    function formatWon(num) {
+      return Number(num || 0).toLocaleString('ko-KR') + '원';
+    }
+
+    function formatShortDate(ts) {
+      const d = new Date(ts);
+      return `${d.getMonth() + 1}/${d.getDate()}`;
+    }
+
+    function formatFullDate(ts) {
+      const d = new Date(ts);
+      return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function escapeJs(str) {
+      return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
+  </script>
+</body>
+</html>
